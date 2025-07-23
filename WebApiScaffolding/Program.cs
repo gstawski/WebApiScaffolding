@@ -34,13 +34,24 @@ internal class Program
                 return;
             }
 
+            if (args.Length == 1)
+            {
+                Console.WriteLine("Please provide the class name as an argument.");
+
+                return;
+            }
+
             RegisterLocator();
 
             var builder = Host.CreateApplicationBuilder(args);
 
             builder.Services.AddHostedService<AppWorker>();
 
-            builder.Services.AddSingleton(new CommandLineArgs {SolutionPath = args.Length > 0 ? args[0] : string.Empty});
+            builder.Services.AddSingleton(new CommandLineArgs
+            {
+                SolutionPath = args.Length > 0 ? args[0] : string.Empty,
+                ClassName = args.Length > 1 ? args[1] : string.Empty
+            });
 
             builder.Services.AddSingleton<IAnalyzeSolutionService, AnalyzeSolutionService>();
 

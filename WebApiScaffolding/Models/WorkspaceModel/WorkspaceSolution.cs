@@ -37,7 +37,7 @@ public class WorkspaceSolution : WorkspaceBase
 
             foreach (var item in sym)
             {
-                var key = item.ToString();
+                var key = $"{item.ContainingNamespace}.{item}";
                 if (!allSymbols.TryAdd(key, item))
                 {
                     await Console.Out.WriteLineAsync($"Duplicate: {key}");

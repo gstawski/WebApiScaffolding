@@ -2,5 +2,6 @@
 
 public class CommandLineArgs
 {
-    public string SolutionPath { get; set; }
+    public string SolutionPath { get; init; }
+    public string ClassName { get; init; }
 }
