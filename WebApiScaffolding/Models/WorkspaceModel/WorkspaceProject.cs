@@ -44,16 +44,16 @@ public class WorkspaceProject
         return ls;
     }
 
-    public static async Task<WorkspaceProject> LoadFromSolution(Project project)
+    public static async Task<WorkspaceProject> LoadFromSolution(Project project, Action<string> logAction)
     {
         return project != null
-            ? await LoadProject(_ => Task.FromResult(project))
+            ? await LoadProject(logAction, _ => Task.FromResult(project))
             : null;
     }
 
-    private static async Task<WorkspaceProject> LoadProject(Func<WorkspaceProgressBarProjectLoadStatus, Task<Project>> getProject)
+    private static async Task<WorkspaceProject> LoadProject(Action<string> logAction, Func<WorkspaceProgressBarProjectLoadStatus, Task<Project>> getProject)
     {
-        var project = await getProject(new WorkspaceProgressBarProjectLoadStatus());
+        var project = await getProject(new WorkspaceProgressBarProjectLoadStatus(logAction));
         var compilation = await project.GetCompilationAsync();
 
         compilation = compilation.AddReferences(MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
@@ -65,7 +65,7 @@ public class WorkspaceProject
             var files = Directory.GetFiles(output, "*.dll").ToList();
             foreach (var f in files)
             {
-                await Console.Out.WriteLineAsync($"AddReference {f}");
+                logAction($"AddReference {f}");
                 compilation = compilation.AddReferences(MetadataReference.CreateFromFile(f));
             }
         }

@@ -1,5 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using WebApiScaffolding.Interfaces;
 using WebApiScaffolding.Models.Configuration;
@@ -10,6 +11,7 @@ namespace WebApiScaffolding.Services;
 
 public class AnalyzeSolutionService : IAnalyzeSolutionService
 {
+    private readonly ILogger<AnalyzeSolutionService> _logger;
     private readonly IOptions<AppConfig> _appConfig;
     private readonly CommandLineArgs _commandLineArgs;
 
@@ -37,8 +39,12 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
         return null;
     }
 
-    public AnalyzeSolutionService(IOptions<AppConfig> appConfig, CommandLineArgs commandLineArgs)
+    public AnalyzeSolutionService(
+        ILogger<AnalyzeSolutionService> logger,
+        IOptions<AppConfig> appConfig,
+        CommandLineArgs commandLineArgs)
     {
+        _logger = logger;
         _appConfig = appConfig;
         _commandLineArgs = commandLineArgs;
     }
@@ -50,7 +56,7 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
             throw new ArgumentException("Solution path must be provided.");
         }
 
-        var solution = await WorkspaceSolution.Load(_commandLineArgs.SolutionPath);
+        var solution = await WorkspaceSolution.Load(_commandLineArgs.SolutionPath, s => _logger.LogInformation(s));
 
         _allProjectSymbols = await solution.AllProjectSymbols();
 
@@ -73,7 +79,7 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
 
             if (symbolName == className && symbolNamespace.StartsWith(domainNamespace))
             {
-                await Console.Out.WriteLineAsync($"Found class: {symbol.Name} in namespace {symbol.ContainingNamespace}");
+                _logger.LogInformation($"Found class: {symbol.Name} in namespace {symbol.ContainingNamespace}");
 
                 var classDeclaration = GetClassDeclarationSyntax(symbol);
 
