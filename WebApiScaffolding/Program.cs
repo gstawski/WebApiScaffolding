@@ -54,6 +54,8 @@ internal class Program
             });
 
             builder.Services.AddSingleton<IAnalyzeSolutionService, AnalyzeSolutionService>();
+            builder.Services.AddSingleton<ITemplateService, TemplateService>();
+            builder.Services.AddSingleton<IGenerateCodeService, GenerateCodeService>();
 
             builder.Logging.AddSimpleConsole(options =>
             {

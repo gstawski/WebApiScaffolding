@@ -1,0 +1,30 @@
+<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ output extension=".cs" #>
+<#@ import namespace="System" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="WebApiScaffolding.Models.Templates" #>
+<#@ parameter name="context" type="System.String" #>
+
+<#
+    GeneratorContext ctx = new GeneratorContext(context);
+#>
+
+namespace <#=ctx.Namespace#>
+{
+    public sealed class <#=ctx.ClassName#>
+    {
+        <#PrintProperties(ctx);#>
+    }
+}
+
+<#+
+    public void PrintProperties(GeneratorContext ctx)
+    {
+        foreach (var prop in ctx.MetaData.Properties)
+        {
+            #>
+            public <#=prop.Type#> <#=prop.Name#> { get; set; }
+            <#+
+        }
+    }
+#>

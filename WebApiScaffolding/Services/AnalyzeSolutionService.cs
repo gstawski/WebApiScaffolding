@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using WebApiScaffolding.Interfaces;
 using WebApiScaffolding.Models.Configuration;
+using WebApiScaffolding.Models.Templates;
 using WebApiScaffolding.Models.WorkspaceModel;
 using WebApiScaffolding.SyntaxWalkers;
 
@@ -13,6 +14,7 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
 {
     private readonly ILogger<AnalyzeSolutionService> _logger;
     private readonly IOptions<AppConfig> _appConfig;
+    private readonly IGenerateCodeService _generateCodeService;
     private readonly CommandLineArgs _commandLineArgs;
 
     private Dictionary<string,ISymbol> _allProjectSymbols = new();
@@ -42,10 +44,12 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
     public AnalyzeSolutionService(
         ILogger<AnalyzeSolutionService> logger,
         IOptions<AppConfig> appConfig,
+        IGenerateCodeService generateCodeService,
         CommandLineArgs commandLineArgs)
     {
         _logger = logger;
         _appConfig = appConfig;
+        _generateCodeService = generateCodeService;
         _commandLineArgs = commandLineArgs;
     }
 
@@ -87,6 +91,20 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
                 publicPropertiesCollector.Visit(classDeclaration);
                 if (publicPropertiesCollector.Properties.Count > 0)
                 {
+                    var classMeta = new ClassMeta
+                    {
+                        Name = symbol.Name,
+                        NameSpace = symbol.ContainingNamespace.ToString(),
+                        Properties = publicPropertiesCollector.Properties.Select(x => new PropertyMeta
+                        {
+                            Name = x.Name,
+                            Type = x.Type.ToString(),
+                            IsSimpleType = x.IsSimleType
+                        }).ToList()
+                    };
+
+                    await _generateCodeService.GenerateCode(classMeta);
+
                 }
             }
         }
