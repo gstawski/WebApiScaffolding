@@ -4,17 +4,17 @@
 <#@ import namespace="System.Text" #>
 <#@ import namespace="WebApiScaffolding.Models.Templates" #>
 <#@ parameter name="context" type="System.String" #>
-
 <#
     GeneratorContext ctx = new GeneratorContext(context);
 #>
+using Application.Contracts.Common;
+using Application.Contracts.Common.Dtos;
 
-namespace <#=ctx.Namespace#>
+namespace <#=ctx.Namespace#>;
+
+public class <#=ctx.ClassName#>BaseCommand
 {
-    public sealed class <#=ctx.ClassName#>
-    {
-        <#PrintProperties(ctx);#>
-    }
+<#PrintProperties(ctx);#>
 }
 
 <#+
@@ -22,9 +22,9 @@ namespace <#=ctx.Namespace#>
     {
         foreach (var prop in ctx.MetaData.Properties)
         {
-            #>
-            public <#=prop.Type#> <#=prop.Name#> { get; set; }
-            <#+
+#>
+    public <#=prop.Type#> <#=prop.Name#> { get; set; }
+<#+
         }
     }
 #>

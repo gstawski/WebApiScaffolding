@@ -1,0 +1,20 @@
+<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ output extension=".cs" #>
+<#@ import namespace="System" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="WebApiScaffolding.Models.Templates" #>
+<#@ parameter name="context" type="System.String" #>
+<#
+    GeneratorContext ctx = new GeneratorContext(context);
+#>
+using MediatR;
+using SharedKernel.Abstractions.CQRS.Commands;
+using System.Text.Json.Serialization;
+
+namespace <#=ctx.Namespace#>;
+
+public sealed class Update<#=ctx.ClassName#>Command : <#=ctx.ClassName#>BaseCommand, ICommand<Unit>
+{
+    [JsonIgnore]
+    public int Id { get; set; }
+}

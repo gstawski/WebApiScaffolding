@@ -103,7 +103,7 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
                         }).ToList()
                     };
 
-                    await _generateCodeService.GenerateCode(classMeta);
+                    await _generateCodeService.GenerateCode(classMeta, Path.GetDirectoryName(_commandLineArgs.SolutionPath));
 
                 }
             }
