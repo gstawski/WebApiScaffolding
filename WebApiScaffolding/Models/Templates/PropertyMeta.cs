@@ -12,4 +12,13 @@ public class PropertyMeta
 
     [JsonPropertyName("s")]
     public bool IsSimpleType { get; set; }
+
+    [JsonPropertyName("o")]
+    public int Order { get; set; }
+
+    [JsonPropertyName("p")]
+    public bool IsSetPublic { get; set; }
+
+    [JsonPropertyName("c")]
+    public bool IsCollection { get; set; }
 }

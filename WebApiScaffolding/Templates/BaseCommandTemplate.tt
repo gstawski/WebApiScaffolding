@@ -23,7 +23,7 @@ public class <#=ctx.ClassName#>BaseCommand
         foreach (var prop in ctx.MetaData.Properties)
         {
 #>
-    public <#=prop.Type#> <#=prop.Name#> { get; set; }
+    public <#=prop.Type#> <#=prop.Name#> { get; init; }
 <#+
         }
     }

@@ -15,12 +15,11 @@ public class WorkspaceProject
 
     public string DefaultNamespace => _project.DefaultNamespace;
 
-    public async Task<List<ISymbol>> AllProjectSymbols()
+    public async Task<List<WorkspaceSymbol>> AllProjectSymbols()
     {
-        List<ISymbol> ls = new List<ISymbol>();
+        List<WorkspaceSymbol> ls = new List<WorkspaceSymbol>();
         foreach (Document d in _project.Documents)
         {
-            var m = await d.GetSemanticModelAsync();
             var root = await d.GetSyntaxRootAsync();
 
             if (root != null)
@@ -28,15 +27,39 @@ public class WorkspaceProject
                 List<ClassDeclarationSyntax> lc = root.DescendantNodes().OfType<ClassDeclarationSyntax>().ToList();
                 foreach (var c in lc)
                 {
-                    ISymbol s = m.GetDeclaredSymbol(c);
-                    ls.Add(s);
+                    var semanticModel = _compilation.GetSemanticModel(c.SyntaxTree);
+                    var classSymbol = semanticModel.GetDeclaredSymbol(c);
+
+                    if (classSymbol != null)
+                    {
+                        var workspaceSymbol = new WorkspaceSymbol
+                        {
+                            Model = semanticModel,
+                            Symbol = classSymbol,
+                            DeclarationSyntaxForClass = c,
+                            DeclarationSyntaxForEnum = null
+                        };
+                        ls.Add(workspaceSymbol);
+                    }
                 }
 
                 List<EnumDeclarationSyntax> enc = root.DescendantNodes().OfType<EnumDeclarationSyntax>().ToList();
                 foreach (var c in enc)
                 {
-                    ISymbol s = m.GetDeclaredSymbol(c);
-                    ls.Add(s);
+                    var semanticModel = _compilation.GetSemanticModel(c.SyntaxTree);
+                    var enumSymbol = semanticModel.GetDeclaredSymbol(c);
+
+                    if (enumSymbol != null)
+                    {
+                        var workspaceSymbol = new WorkspaceSymbol
+                        {
+                            Model = semanticModel,
+                            Symbol = enumSymbol,
+                            DeclarationSyntaxForClass = null,
+                            DeclarationSyntaxForEnum = c
+                        };
+                        ls.Add(workspaceSymbol);
+                    }
                 }
             }
         }

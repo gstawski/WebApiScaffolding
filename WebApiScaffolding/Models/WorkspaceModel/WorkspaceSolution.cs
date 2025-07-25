@@ -24,22 +24,22 @@ public class WorkspaceSolution : WorkspaceBase
         _logAction = logAction;
     }
 
-    public async Task<Dictionary<string, ISymbol>> AllProjectSymbols()
+    public async Task<Dictionary<string, WorkspaceSymbol>> AllProjectSymbols()
     {
         foreach (var p in _solution.Projects)
         {
             _openProjects[p.Name] = await WorkspaceProject.LoadFromSolution(p, _logAction);
         }
 
-        Dictionary<string, ISymbol> allSymbols = new Dictionary<string, ISymbol>();
+        Dictionary<string, WorkspaceSymbol> allSymbols = new Dictionary<string, WorkspaceSymbol>();
 
-        foreach (var p in _openProjects)
+        foreach (var p in _openProjects.Values)
         {
-            var sym = await p.Value.AllProjectSymbols();
+            var sym = await p.AllProjectSymbols();
 
             foreach (var item in sym)
             {
-                var key = $"{item.ContainingNamespace}.{item}";
+                var key = item.FullName;
                 if (!allSymbols.TryAdd(key, item))
                 {
                     _logAction($"Duplicate: {key}");
