@@ -1,8 +1,10 @@
-﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
+﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using WebApiScaffolding.Interfaces;
 using WebApiScaffolding.Models.Configuration;
+using WebApiScaffolding.Models.SyntaxWalkers;
 using WebApiScaffolding.Models.Templates;
 using WebApiScaffolding.Models.WorkspaceModel;
 using WebApiScaffolding.SyntaxWalkers;
@@ -18,22 +20,120 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
 
     private Dictionary<string, WorkspaceSymbol> _allProjectSymbols = new();
 
-    private static bool InheritsFrom(ClassDeclarationSyntax? classDeclaration, string baseTypeName)
+    private static bool IsPrimitiveType(ITypeSymbol typeSymbol)
     {
-        if (classDeclaration == null || string.IsNullOrEmpty(baseTypeName))
+        switch (typeSymbol.SpecialType)
+        {
+            case SpecialType.System_Boolean:
+            case SpecialType.System_Byte:
+            case SpecialType.System_SByte:
+            case SpecialType.System_Int16:
+            case SpecialType.System_UInt16:
+            case SpecialType.System_Int32:
+            case SpecialType.System_UInt32:
+            case SpecialType.System_Int64:
+            case SpecialType.System_UInt64:
+            case SpecialType.System_IntPtr:
+            case SpecialType.System_UIntPtr:
+            case SpecialType.System_Char:
+            case SpecialType.System_Double:
+            case SpecialType.System_Single:
+            case SpecialType.System_String:
+            case SpecialType.System_DateTime:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static bool IsClassInheritingFrom(WorkspaceSymbol workspaceSymbol, string baseTypeName)
+    {
+        var classDeclaration = workspaceSymbol.DeclarationSyntaxForClass;
+
+        if (classDeclaration == null)
         {
             return false;
         }
 
-        if (classDeclaration.BaseList?.Types.Count > 0)
+        var baseTypeNames = classDeclaration.BaseList?.Types.Select(type => type.Type);
+
+        if (baseTypeNames == null || !baseTypeNames.Any())
         {
-            foreach (var baseType in classDeclaration.BaseList.Types)
+            return false;
+        }
+
+        var semanticModel = workspaceSymbol.Model;
+        foreach (var baseType in baseTypeNames)
+        {
+            var typeInfo = semanticModel.GetTypeInfo(baseType);
+            var resolvedSymbol = typeInfo.Type ?? typeInfo.ConvertedType;
+            if (resolvedSymbol != null)
             {
-                var type = baseType.Type.ToString();
-                if (type == baseTypeName || type.EndsWith($".{baseTypeName}"))
+                if (IsInheritingFrom(resolvedSymbol, baseTypeName))
                 {
                     return true;
                 }
+            }
+        }
+
+        if (semanticModel.GetDeclaredSymbol(classDeclaration) is INamedTypeSymbol classSymbol)
+        {
+            foreach (var interfaceImpl in classSymbol.Interfaces)
+            {
+                if (IsInheritingFrom(interfaceImpl, baseTypeName))
+                {
+                    return true;
+                }
+            }
+
+            if (classSymbol.BaseType != null && IsInheritingFrom(classSymbol.BaseType, baseTypeName))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsInheritingFrom(ITypeSymbol symbol, string baseTypeName)
+    {
+        if (symbol == null)
+        {
+            return false;
+        }
+
+        var fullName = symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        var dotBaseTypeName = $".{baseTypeName}";
+
+        // Check direct inheritance from ValueObject
+        if (fullName.EndsWith(dotBaseTypeName) || fullName == baseTypeName)
+        {
+            return true;
+        }
+
+        // Recursively check the base class of each type in the hierarchy
+        var baseTypeSymbol = symbol.BaseType;
+
+        while (baseTypeSymbol != null)
+        {
+            fullName = baseTypeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+            if (fullName.EndsWith(dotBaseTypeName) || fullName == baseTypeName)
+            {
+                return true;
+            }
+
+            baseTypeSymbol = baseTypeSymbol.BaseType;
+        }
+
+        // Check interfaces
+        foreach (var interfaceSymbol in symbol.Interfaces)
+        {
+            fullName = interfaceSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+            if (fullName.EndsWith(dotBaseTypeName) || fullName == baseTypeName)
+            {
+                return true;
             }
         }
 
@@ -71,31 +171,97 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
         return null;
     }
 
-    private static PropertyMeta GetPropertyForValueObject(WorkspaceSymbol symbol, PropertyMeta propertyMeta)
+    private static List<IPropertySymbol> GetPropertiesSetByPrimaryConstructor(SemanticModel semanticModel,
+        ClassDeclarationSyntax classDeclaration, Func<string, WorkspaceSymbol?> findSymbolByName)
     {
-        FindPublicPropertiesCollector publicPropertiesCollector = new FindPublicPropertiesCollector(symbol.Model);
+        var results = new List<IPropertySymbol>();
+
+        var classSymbol = semanticModel.GetDeclaredSymbol(classDeclaration);
+        if (classSymbol == null)
+        {
+            return results;
+        }
+
+        var primaryBaseType = classDeclaration.BaseList?.Types
+            .OfType<PrimaryConstructorBaseTypeSyntax>()
+            .FirstOrDefault();
+
+        if (primaryBaseType != null)
+        {
+
+            var symbol = findSymbolByName(primaryBaseType.Type.ToString());
+
+            if (symbol == null)
+            {
+                return results;
+            }
+
+            var currentType = symbol.Symbol;
+            while (currentType != null)
+            {
+                var valueProperty = currentType.GetMembers()
+                    .OfType<IPropertySymbol>()
+                    .FirstOrDefault(p => p.GetMethod != null);
+
+                if (valueProperty != null)
+                {
+                    results.Add(valueProperty);
+                    break;
+                }
+
+                currentType = currentType.BaseType;
+            }
+        }
+
+        return results;
+    }
+
+    private static (string typeName, bool isSimple) GetValueObjectType(WorkspaceSymbol symbol, SyntaxPropertyMeta propertyMeta, Func<string, WorkspaceSymbol?> findSymbolByName)
+    {
+        if (symbol.DeclarationSyntaxForClass == null)
+        {
+            return (propertyMeta.Type, propertyMeta.IsSimpleType);
+        }
+
+        var publicPropertiesCollector = new FindPublicPropertiesCollector(symbol.Model);
         publicPropertiesCollector.Visit(symbol.DeclarationSyntaxForClass);
-
-        var nullAble = propertyMeta.Type.EndsWith("?") ? "?" : string.Empty;
-
         if (publicPropertiesCollector.Properties.Count == 1)
         {
-            return new PropertyMeta
-            {
-                Name = propertyMeta.Name,
-                Type = publicPropertiesCollector.Properties.First().Type + nullAble,
-                IsSimpleType = true,
-                Order = propertyMeta.Order,
-                IsSetPublic = propertyMeta.IsSetPublic,
-                IsCollection = propertyMeta.IsCollection
-            };
+            var nullAble = propertyMeta.Type.EndsWith("?") ? "?" : string.Empty;
+            return (publicPropertiesCollector.Properties.First().Type + nullAble, true);
         }
+
+        var constructorCollector = new FindConstructorCollector(symbol.Model);
+        constructorCollector.Visit(symbol.DeclarationSyntaxForClass);
+        if (constructorCollector.Constructors.Count > 0)
+        {
+            var prop1 = constructorCollector.Constructors.First().GetPropertiesSetInConstructor(findSymbolByName);
+            if (prop1.Count == 1)
+            {
+                var fproperty1 = prop1.First();
+                return (fproperty1.Type.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat), IsPrimitiveType(fproperty1.Type));
+            }
+
+            var prop2 = GetPropertiesSetByPrimaryConstructor(symbol.Model, symbol.DeclarationSyntaxForClass, findSymbolByName);
+            if (prop2.Count == 1)
+            {
+                var fproperty2 = prop2.First();
+                return (fproperty2.Type.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat), IsPrimitiveType(fproperty2.Type));
+            }
+        }
+
+        return (propertyMeta.Type + "Dto", propertyMeta.IsSimpleType);
+    }
+
+    private static PropertyMeta GetPropertyForValueObject(WorkspaceSymbol symbol, SyntaxPropertyMeta propertyMeta, Func<string, WorkspaceSymbol?> findSymbolByName)
+    {
+        var (typeName, isSimple) = GetValueObjectType(symbol, propertyMeta, findSymbolByName);
 
         return new PropertyMeta
         {
             Name = propertyMeta.Name,
-            Type = propertyMeta.Type + "Dto",
-            IsSimpleType = propertyMeta.IsSimpleType,
+            Type = typeName,
+            IsSimpleType = isSimple,
             Order = propertyMeta.Order,
             IsSetPublic = propertyMeta.IsSetPublic,
             IsCollection = propertyMeta.IsCollection
@@ -143,16 +309,16 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
                 {
                     if (prop.IsSimpleType)
                     {
-                        properties.Add(prop);
+                        properties.Add(prop.ToPropertyMeta());
                     }
                     else if (!prop.IsCollection)
                     {
                         var psymbol = FindSymbolByName(_allProjectSymbols, prop.Type, null);
                         if (psymbol != null)
                         {
-                            if (InheritsFrom(psymbol.DeclarationSyntaxForClass, _appConfig.Value.ValueObjectClass))
+                            if (IsClassInheritingFrom(psymbol, _appConfig.Value.ValueObjectClass))
                             {
-                                properties.Add(GetPropertyForValueObject(psymbol, prop));
+                                properties.Add(GetPropertyForValueObject(psymbol, prop, (classname) => FindSymbolByName(_allProjectSymbols, classname, null)));
                             }
                             else
                             {

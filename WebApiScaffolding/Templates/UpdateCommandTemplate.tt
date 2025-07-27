@@ -16,5 +16,5 @@ namespace <#=ctx.Namespace#>;
 public sealed class Update<#=ctx.ClassName#>Command : <#=ctx.ClassName#>BaseCommand, ICommand<Unit>
 {
     [JsonIgnore]
-    public int Id { get; set; }
+    public int Id<#=ctx.ClassName#> { get; set; }
 }
