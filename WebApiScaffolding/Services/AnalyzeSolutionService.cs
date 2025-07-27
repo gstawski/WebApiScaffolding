@@ -46,100 +46,6 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
         }
     }
 
-    private static bool IsClassInheritingFrom(WorkspaceSymbol workspaceSymbol, string baseTypeName)
-    {
-        var classDeclaration = workspaceSymbol.DeclarationSyntaxForClass;
-
-        if (classDeclaration == null)
-        {
-            return false;
-        }
-
-        var baseTypeNames = classDeclaration.BaseList?.Types.Select(type => type.Type);
-
-        if (baseTypeNames == null || !baseTypeNames.Any())
-        {
-            return false;
-        }
-
-        var semanticModel = workspaceSymbol.Model;
-        foreach (var baseType in baseTypeNames)
-        {
-            var typeInfo = semanticModel.GetTypeInfo(baseType);
-            var resolvedSymbol = typeInfo.Type ?? typeInfo.ConvertedType;
-            if (resolvedSymbol != null)
-            {
-                if (IsInheritingFrom(resolvedSymbol, baseTypeName))
-                {
-                    return true;
-                }
-            }
-        }
-
-        if (semanticModel.GetDeclaredSymbol(classDeclaration) is INamedTypeSymbol classSymbol)
-        {
-            foreach (var interfaceImpl in classSymbol.Interfaces)
-            {
-                if (IsInheritingFrom(interfaceImpl, baseTypeName))
-                {
-                    return true;
-                }
-            }
-
-            if (classSymbol.BaseType != null && IsInheritingFrom(classSymbol.BaseType, baseTypeName))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static bool IsInheritingFrom(ITypeSymbol symbol, string baseTypeName)
-    {
-        if (symbol == null)
-        {
-            return false;
-        }
-
-        var fullName = symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-        var dotBaseTypeName = $".{baseTypeName}";
-
-        // Check direct inheritance from ValueObject
-        if (fullName.EndsWith(dotBaseTypeName) || fullName == baseTypeName)
-        {
-            return true;
-        }
-
-        // Recursively check the base class of each type in the hierarchy
-        var baseTypeSymbol = symbol.BaseType;
-
-        while (baseTypeSymbol != null)
-        {
-            fullName = baseTypeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
-            if (fullName.EndsWith(dotBaseTypeName) || fullName == baseTypeName)
-            {
-                return true;
-            }
-
-            baseTypeSymbol = baseTypeSymbol.BaseType;
-        }
-
-        // Check interfaces
-        foreach (var interfaceSymbol in symbol.Interfaces)
-        {
-            fullName = interfaceSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
-            if (fullName.EndsWith(dotBaseTypeName) || fullName == baseTypeName)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     private static WorkspaceSymbol? FindSymbolByName(
         Dictionary<string, WorkspaceSymbol> allProjectSymbols,
         string className,
@@ -188,7 +94,6 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
 
         if (primaryBaseType != null)
         {
-
             var symbol = findSymbolByName(primaryBaseType.Type.ToString());
 
             if (symbol == null)
@@ -216,7 +121,7 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
         return results;
     }
 
-    private static (string typeName, bool isSimple) GetValueObjectType(WorkspaceSymbol symbol, SyntaxPropertyMeta propertyMeta, Func<string, WorkspaceSymbol?> findSymbolByName)
+    private static (string typeName, bool isSimple) GetBaseType(WorkspaceSymbol symbol, SyntaxPropertyMeta propertyMeta, Func<string, WorkspaceSymbol?> findSymbolByName)
     {
         if (symbol.DeclarationSyntaxForClass == null)
         {
@@ -250,12 +155,17 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
             }
         }
 
+        if (propertyMeta.Type.EndsWith("?"))
+        {
+            return (propertyMeta.Type.Trim('?') + "Dto?", propertyMeta.IsSimpleType);
+        }
+
         return (propertyMeta.Type + "Dto", propertyMeta.IsSimpleType);
     }
 
     private static PropertyMeta GetPropertyForValueObject(WorkspaceSymbol symbol, SyntaxPropertyMeta propertyMeta, Func<string, WorkspaceSymbol?> findSymbolByName)
     {
-        var (typeName, isSimple) = GetValueObjectType(symbol, propertyMeta, findSymbolByName);
+        var (typeName, isSimple) = GetBaseType(symbol, propertyMeta, findSymbolByName);
 
         return new PropertyMeta
         {
@@ -291,10 +201,10 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
 
         _allProjectSymbols = await solution.AllProjectSymbols();
 
-        var domainNamespace = _appConfig.Value.DomainNamespace;
-        var className = _commandLineArgs.ClassName;
+        var configurationSymbol = FindSymbolByName(_allProjectSymbols, $"{_commandLineArgs.ClassName}Configuration", _appConfig.Value.InfrastructureNamespace);
 
-        var symbol = FindSymbolByName(_allProjectSymbols, className, domainNamespace);
+        var symbol = FindSymbolByName(_allProjectSymbols, _commandLineArgs.ClassName, _appConfig.Value.DomainNamespace);
+
         if (symbol != null)
         {
             _logger.LogInformation($"Found class: {symbol.Name} in namespace {symbol.Namespace}");
@@ -305,8 +215,15 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
             {
                 var properties = new List<PropertyMeta>();
 
+                var navigationProperties = SyntaxHelpers.GetPropertiesWithNavigation(configurationSymbol);
+
                 foreach (var prop in publicPropertiesCollector.Properties)
                 {
+                    if (navigationProperties.ContainsKey(prop.Name))
+                    {
+                        continue;
+                    }
+
                     if (prop.IsSimpleType)
                     {
                         properties.Add(prop.ToPropertyMeta());
@@ -316,7 +233,7 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
                         var psymbol = FindSymbolByName(_allProjectSymbols, prop.Type, null);
                         if (psymbol != null)
                         {
-                            if (IsClassInheritingFrom(psymbol, _appConfig.Value.ValueObjectClass))
+                            if (SyntaxHelpers.IsClassInheritingFrom(psymbol, _appConfig.Value.ValueObjectClass))
                             {
                                 properties.Add(GetPropertyForValueObject(psymbol, prop, (classname) => FindSymbolByName(_allProjectSymbols, classname, null)));
                             }
@@ -348,7 +265,7 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
         }
         else
         {
-            _logger.LogWarning($"Class {className} not found in namespace {domainNamespace}.");
+            _logger.LogWarning($"Class {_commandLineArgs.ClassName} not found in namespace {_appConfig.Value.DomainNamespace}.");
         }
     }
 }
