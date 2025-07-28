@@ -1,24 +1,21 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using WebApiScaffolding.Interfaces;
-using WebApiScaffolding.Models.Configuration;
 using WebApiScaffolding.Models.SyntaxWalkers;
 using WebApiScaffolding.Models.Templates;
 using WebApiScaffolding.Models.WorkspaceModel;
 using WebApiScaffolding.SyntaxWalkers;
+using IPropertySymbol = Microsoft.CodeAnalysis.IPropertySymbol;
+using SemanticModel = Microsoft.CodeAnalysis.SemanticModel;
+using SymbolDisplayFormat = Microsoft.CodeAnalysis.SymbolDisplayFormat;
 
 namespace WebApiScaffolding.Services;
 
-public class AnalyzeSolutionService : IAnalyzeSolutionService
+public class ClassMetaBuilderForCommand : ClassMetaBuilderBase, IClassMetaBuilder
 {
-    private readonly ILogger<AnalyzeSolutionService> _logger;
-    private readonly IOptions<AppConfig> _appConfig;
-    private readonly IGenerateCodeService _generateCodeService;
-    private readonly CommandLineArgs _commandLineArgs;
-
-    private Dictionary<string, WorkspaceSymbol> _allProjectSymbols = new();
+    public ClassMetaBuilderForCommand(Dictionary<string, WorkspaceSymbol> symbols, string valueObjectClass) : base(symbols, valueObjectClass)
+    {
+    }
 
     private static bool IsPrimitiveType(ITypeSymbol typeSymbol)
     {
@@ -44,44 +41,6 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
             default:
                 return false;
         }
-    }
-
-    private static WorkspaceSymbol? FindSymbolByName(
-        Dictionary<string, WorkspaceSymbol> allProjectSymbols,
-        string className,
-        string? domainNamespace)
-    {
-        className = className.TrimEnd('?');
-
-        if (!string.IsNullOrEmpty(domainNamespace))
-        {
-            domainNamespace += ".";
-
-            if (allProjectSymbols.TryGetValue($"{domainNamespace}{className}", out var foundSymbol))
-            {
-                return foundSymbol;
-            }
-
-            foreach (var symbol in allProjectSymbols.Values)
-            {
-                if (symbol.Name == className && symbol.Namespace.StartsWith(domainNamespace))
-                {
-                    return symbol;
-                }
-            }
-        }
-        else
-        {
-            foreach (var symbol in allProjectSymbols.Values)
-            {
-                if (symbol.Name == className)
-                {
-                    return symbol;
-                }
-            }
-        }
-
-        return null;
     }
 
     private static List<IPropertySymbol> GetPropertiesSetByPrimaryConstructor(SemanticModel semanticModel,
@@ -186,50 +145,67 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
         };
     }
 
-    public AnalyzeSolutionService(
-        ILogger<AnalyzeSolutionService> logger,
-        IOptions<AppConfig> appConfig,
-        IGenerateCodeService generateCodeService,
-        CommandLineArgs commandLineArgs)
+    public ClassMeta BuildClassMeta(WorkspaceSymbol symbol)
     {
-        _logger = logger;
-        _appConfig = appConfig;
-        _generateCodeService = generateCodeService;
-        _commandLineArgs = commandLineArgs;
-    }
-
-    public async Task AnalyzeSolution()
-    {
-        if (string.IsNullOrEmpty(_commandLineArgs.SolutionPath))
+        if (symbol.DeclarationSyntaxForClass == null)
         {
-            throw new ArgumentException("Solution path must be provided.");
+            throw new ArgumentException("Declaration syntax for class is null", nameof(symbol));
         }
 
-        var solution = await WorkspaceSolution.Load(_commandLineArgs.SolutionPath, s => _logger.LogInformation(s));
+        FindPublicPropertiesCollector publicPropertiesCollector = new FindPublicPropertiesCollector(symbol.Model);
+        publicPropertiesCollector.Visit(symbol.DeclarationSyntaxForClass);
 
-        _allProjectSymbols = await solution.AllProjectSymbols();
-
-        //var configurationSymbol = FindSymbolByName(_allProjectSymbols, $"{_commandLineArgs.ClassName}Configuration", _appConfig.Value.InfrastructureNamespace);
-
-        var symbol = FindSymbolByName(_allProjectSymbols, _commandLineArgs.ClassName, _appConfig.Value.DomainNamespace);
-
-        if (symbol != null)
+        var properties = new List<PropertyMeta>();
+        if (publicPropertiesCollector.Properties.Count > 0)
         {
-            _logger.LogInformation($"Found class: {symbol.Name} in namespace {symbol.Namespace}");
+            //var navigationProperties = SyntaxHelpers.GetPropertiesWithNavigation(configurationSymbol);
 
+            foreach (var prop in publicPropertiesCollector.Properties)
             {
-                var builder = new ClassMetaBuilderForTemplate(_allProjectSymbols, solution, _appConfig.Value.DomainNamespace, _appConfig.Value.ValueObjectClass );
-                var classMeta = builder.BuildClassMeta(symbol);
-            }
-            {
-                var builder = new ClassMetaBuilderForCommand(_allProjectSymbols, _appConfig.Value.ValueObjectClass);
-                var classMeta = builder.BuildClassMeta(symbol);
-                await _generateCodeService.GenerateCodeForCommands(classMeta, Path.GetDirectoryName(_commandLineArgs.SolutionPath));
+                /*if (navigationProperties.ContainsKey(prop.Name))
+                {
+                    continue;
+                }*/
+
+                if (prop.IsSimpleType)
+                {
+                    properties.Add(prop.ToPropertyMeta());
+                }
+                else if (!prop.IsCollection)
+                {
+                    var psymbol = FindSymbolByName(prop.Type, null);
+                    if (psymbol != null)
+                    {
+                        if (SyntaxHelpers.IsClassInheritingFrom(psymbol, ValueObjectClass))
+                        {
+                            properties.Add(GetPropertyForValueObject(psymbol, prop, (classname) => FindSymbolByName(classname, null)));
+                        }
+                        else
+                        {
+                            properties.Add(new PropertyMeta
+                            {
+                                Name = prop.Name,
+                                Type = prop.Type,
+                                IsSimpleType = false,
+                                Order = prop.Order,
+                                IsSetPublic = prop.IsSetPublic,
+                                IsCollection = prop.IsCollection,
+                                IsValueObject = false,
+                                WithOne = string.Empty,
+                                ForeignKey = string.Empty
+                            });
+                        }
+                    }
+                }
             }
         }
-        else
+
+        var classMeta = new ClassMeta
         {
-            _logger.LogWarning($"Class {_commandLineArgs.ClassName} not found in namespace {_appConfig.Value.DomainNamespace}.");
-        }
+            Name = symbol.Name,
+            NameSpace = symbol.Namespace,
+            Properties = properties
+        };
+        return classMeta;
     }
 }

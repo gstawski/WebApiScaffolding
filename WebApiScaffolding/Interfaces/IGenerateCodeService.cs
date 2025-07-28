@@ -4,5 +4,5 @@ namespace WebApiScaffolding.Interfaces;
 
 public interface IGenerateCodeService
 {
-    Task GenerateCode(ClassMeta metadata, string solutionPath);
+    Task GenerateCodeForCommands(ClassMeta metadata, string solutionPath);
 }

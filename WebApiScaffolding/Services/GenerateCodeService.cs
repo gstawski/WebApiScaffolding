@@ -22,7 +22,7 @@ public class GenerateCodeService : IGenerateCodeService
         _templateService = templateService;
     }
 
-    public async Task GenerateCode(ClassMeta metadata, string solutionPath)
+    public async Task GenerateCodeForCommands(ClassMeta metadata, string solutionPath)
     {
         var path = CreateDirectoriesForContracts(metadata, solutionPath);
 

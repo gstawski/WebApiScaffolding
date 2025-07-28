@@ -46,6 +46,10 @@ public class SyntaxPropertyMeta
 
     private static bool DatesAreSimpleTypes(string typeName)
     {
+        if (typeName.EndsWith("DateOnly") || typeName.EndsWith("DateOnly?"))
+        {
+            return true;
+        }
         if (typeName.EndsWith("DateTime") || typeName.EndsWith("DateTime?"))
         {
             return true;

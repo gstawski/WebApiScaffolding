@@ -21,4 +21,13 @@ public class PropertyMeta
 
     [JsonPropertyName("c")]
     public bool IsCollection { get; set; }
+
+    [JsonPropertyName("v")]
+    public bool IsValueObject { get; set; }
+
+    [JsonPropertyName("w")]
+    public string WithOne { get; set; }
+
+    [JsonPropertyName("f")]
+    public string ForeignKey { get; set; }
 }

@@ -1,0 +1,157 @@
+<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ import namespace="WebApiScaffolding.Models.Templates" #>
+<#@ parameter name="context" type="System.String" #>
+<#
+    GeneratorContext ctx = new GeneratorContext(context);
+#>
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace <#=ctx.Namespace#>;
+
+public class <#=ctx.ClassName#>Configuration : IEntityTypeConfiguration<<#=ctx.ClassName#>>
+{
+    public void Configure(EntityTypeBuilder<<#=ctx.ClassName#>> builder)
+    {
+        builder.ToTable(<#=ToSnakeCase(ctx.ClassName)#>, "dbo");
+        builder.HasKey(x => x.Id);
+
+        builder.Property(x => x.Id).HasColumnName("id_<#=ToSnakeCase(ctx.ClassName)#>").HasConversion(c => c.Value, c => new<#=ctx.ClassName#>Id(c));
+
+<#PrintProperties(ctx);#>
+    }
+}
+
+<#+
+    public void PrintProperties(GeneratorContext ctx)
+    {
+        foreach (var prop in ctx.MetaData.Properties)
+        {
+            if (prop.IsSimpleType)
+            {
+#>
+        builder.Property(x => x.<#= prop.Name #>).HasColumnName("<#= ToSnakeCase(prop.Name) #>")<#=SpecialAttributes(prop, ctx.ClassName)#><#= IsRequired(prop) #>;
+<#+
+            }
+            else if (prop.IsValueObject)
+            {
+#>
+        builder.Property(x => x.<#= prop.Name #>).HasColumnName("<#= ToSnakeCase(prop.Name) #>")<#=SpecialAttributes(prop, ctx.ClassName)#><#= IsRequired(prop) #>;
+
+        builder.HasOne<<#= prop.WithOne #>>()
+            .WithMany()
+            .HasForeignKey(x => x.<#= prop.Name #>);
+<#+
+            }
+            else if (prop.IsCollection)
+            {
+#>
+        builder.HasMany(x => x.<#= prop.Name #>)
+            .WithOne(x => x.<#= prop.WithOne #>)
+            .HasForeignKey(x => x.<#= prop.ForeignKey #>)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(x => x.<#= prop.Name #>)
+            .AutoInclude();
+<#+
+            }
+            else
+            {
+#>
+        builder.HasOne(x => x.<#= prop.Name #>)
+            .WithMany()
+            .HasForeignKey(a => a.<#= prop.ForeignKey #>)
+            .OnDelete(DeleteBehavior.Restrict);
+<#+
+            }
+        }
+    }
+
+    public static string IsRequired(PropertyMeta prop)
+    {
+        return prop.Type.EndsWith("?") ? string.Empty :".IsRequired()";
+    }
+
+    public static string SpecialAttributes(PropertyMeta prop, string className)
+    {
+        if (prop.Type.StartsWith("string"))
+        {
+            return $".HasMaxLength({className}{prop.Name}MaxLength)";
+        }
+
+        if (prop.Type.StartsWith("decimal"))
+        {
+            return ".HasColumnType(\"decimal\").HasPrecision(6, 2)";
+        }
+
+        if (prop.Type.StartsWith("DateOnly"))
+        {
+            return ".HasColumnType(\"date\")";
+        }
+
+        if (prop.IsValueObject)
+        {
+            return $".HasConversion(x => x.Value, x => new {prop.Type.TrimEnd('?')}(x))";
+        }
+
+        return string.Empty;
+    }
+
+    public static string ToSnakeCase(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+            return input;
+
+        StringBuilder result = new StringBuilder();
+        bool nextCharIsUpper = false;
+
+        for (int i = 0; i < input.Length; i++)
+        {
+            char currentChar = input[i];
+            if (char.IsUpper(currentChar))
+            {
+                if (i > 0 && char.IsUpper(input[i - 1]) && i < input.Length - 1)
+                {
+                    result.Append('_');
+                    result.Append(char.ToLower(currentChar));
+                    nextCharIsUpper = false;
+                }
+                else
+                {
+                    if (i > 0)
+                    {
+                        result.Append('_');
+                        nextCharIsUpper = true;
+                    }
+                    result.Append(char.ToLower(currentChar));
+                }
+            }
+            else
+            {
+                if (currentChar == '_' || currentChar == '-')
+                {
+                    result.Append('_');
+                }
+                else
+                {
+                    if (nextCharIsUpper)
+                    {
+                        result.Append('_');
+                        nextCharIsUpper = false;
+                    }
+                    result.Append(currentChar);
+                }
+            }
+
+            if (i < input.Length - 1 && char.IsLetter(input[i + 1]) &&
+                char.IsLower(currentChar) && char.IsUpper(input[i + 1]))
+            {
+                nextCharIsUpper = true;
+            }
+        }
+
+        return result.ToString().ToLower();
+    }
+#>
