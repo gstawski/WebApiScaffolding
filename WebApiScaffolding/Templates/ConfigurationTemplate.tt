@@ -8,6 +8,7 @@
 #>
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+<#PrintUsages(ctx);#>
 
 namespace <#=ctx.Namespace#>;
 
@@ -15,16 +16,31 @@ public class <#=ctx.ClassName#>Configuration : IEntityTypeConfiguration<<#=ctx.C
 {
     public void Configure(EntityTypeBuilder<<#=ctx.ClassName#>> builder)
     {
-        builder.ToTable(<#=ToSnakeCase(ctx.ClassName)#>, "dbo");
+        builder.ToTable("<#=ToSnakeCase(ctx.ClassName)#>", "dbo");
         builder.HasKey(x => x.Id);
 
-        builder.Property(x => x.Id).HasColumnName("id_<#=ToSnakeCase(ctx.ClassName)#>").HasConversion(c => c.Value, c => new<#=ctx.ClassName#>Id(c));
+        builder.Property(x => x.Id).HasColumnName("id_<#=ToSnakeCase(ctx.ClassName)#>").HasConversion(c => c.Value, c => new <#=ctx.ClassName#>Id(c));
 
 <#PrintProperties(ctx);#>
     }
 }
 
 <#+
+    public void PrintUsages(GeneratorContext ctx)
+    {
+        if (ctx.MetaData.Namespaces == null)
+        {
+            return;
+        }
+
+        foreach (var n in ctx.MetaData.Namespaces)
+        {
+#>
+using <#= n #>;
+<#+
+        }
+    }
+
     public void PrintProperties(GeneratorContext ctx)
     {
         foreach (var prop in ctx.MetaData.Properties)
@@ -52,7 +68,6 @@ public class <#=ctx.ClassName#>Configuration : IEntityTypeConfiguration<<#=ctx.C
             .WithOne(x => x.<#= prop.WithOne #>)
             .HasForeignKey(x => x.<#= prop.ForeignKey #>)
             .OnDelete(DeleteBehavior.Cascade);
-
         builder.Navigation(x => x.<#= prop.Name #>)
             .AutoInclude();
 <#+
@@ -64,6 +79,8 @@ public class <#=ctx.ClassName#>Configuration : IEntityTypeConfiguration<<#=ctx.C
             .WithMany()
             .HasForeignKey(a => a.<#= prop.ForeignKey #>)
             .OnDelete(DeleteBehavior.Restrict);
+        builder.Navigation(x => x.<#= prop.Name #>)
+            .AutoInclude();
 <#+
             }
         }
@@ -78,7 +95,7 @@ public class <#=ctx.ClassName#>Configuration : IEntityTypeConfiguration<<#=ctx.C
     {
         if (prop.Type.StartsWith("string"))
         {
-            return $".HasMaxLength({className}{prop.Name}MaxLength)";
+            return $".HasMaxLength({className}.{prop.Name}MaxLength)";
         }
 
         if (prop.Type.StartsWith("decimal"))
@@ -101,57 +118,50 @@ public class <#=ctx.ClassName#>Configuration : IEntityTypeConfiguration<<#=ctx.C
 
     public static string ToSnakeCase(string input)
     {
-        if (string.IsNullOrEmpty(input))
+        if (string.IsNullOrWhiteSpace(input))
+        {
             return input;
+        }
 
-        StringBuilder result = new StringBuilder();
-        bool nextCharIsUpper = false;
+        var builder = new StringBuilder(input.Length + 5);
+        var previousCharIsLetterOrDigit = false;
 
         for (int i = 0; i < input.Length; i++)
         {
-            char currentChar = input[i];
-            if (char.IsUpper(currentChar))
-            {
-                if (i > 0 && char.IsUpper(input[i - 1]) && i < input.Length - 1)
-                {
-                    result.Append('_');
-                    result.Append(char.ToLower(currentChar));
-                    nextCharIsUpper = false;
-                }
-                else
-                {
-                    if (i > 0)
-                    {
-                        result.Append('_');
-                        nextCharIsUpper = true;
-                    }
-                    result.Append(char.ToLower(currentChar));
-                }
-            }
-            else
-            {
-                if (currentChar == '_' || currentChar == '-')
-                {
-                    result.Append('_');
-                }
-                else
-                {
-                    if (nextCharIsUpper)
-                    {
-                        result.Append('_');
-                        nextCharIsUpper = false;
-                    }
-                    result.Append(currentChar);
-                }
-            }
+            char c = input[i];
 
-            if (i < input.Length - 1 && char.IsLetter(input[i + 1]) &&
-                char.IsLower(currentChar) && char.IsUpper(input[i + 1]))
+            if (char.IsUpper(c))
             {
-                nextCharIsUpper = true;
+                if (i > 0 && previousCharIsLetterOrDigit)
+                {
+                    builder.Append('_');
+                }
+                builder.Append(char.ToLowerInvariant(c));
+                previousCharIsLetterOrDigit = true;
+            }
+            else if (c == ' ' || c == '-')
+            {
+                if (builder.Length > 0 && builder[builder.Length - 1] != '_')
+                {
+                    builder.Append('_');
+                }
+                previousCharIsLetterOrDigit = false;
+            }
+            else if (char.IsLetterOrDigit(c))
+            {
+                builder.Append(c);
+                previousCharIsLetterOrDigit = true;
+            }
+            else if (c == '_')
+            {
+                if (builder.Length > 0 && builder[builder.Length - 1] != '_')
+                {
+                    builder.Append('_');
+                }
+                previousCharIsLetterOrDigit = false;
             }
         }
 
-        return result.ToString().ToLower();
+        return builder.ToString();
     }
 #>

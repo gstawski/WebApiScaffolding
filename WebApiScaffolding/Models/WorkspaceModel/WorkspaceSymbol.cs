@@ -13,4 +13,20 @@ public class WorkspaceSymbol
     public string Name => Symbol.Name;
     public string FullName => Symbol.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
     public string Namespace => Symbol.ContainingNamespace.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
+
+    public string UnderlyingGenericTypeName
+    {
+        get
+        {
+            if (Symbol.IsGenericType)
+            {
+                foreach (var type in Symbol.TypeArguments)
+                {
+                    return type.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
+                }
+            }
+
+            return string.Empty;
+        }
+    }
 }

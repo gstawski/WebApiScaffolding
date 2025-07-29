@@ -25,6 +25,9 @@ public class GeneratorContext
     [JsonIgnore]
     public string ClassName => MetaData.Name;
 
+    [JsonIgnore]
+    public int Order => MetaData.Order;
+
     public GeneratorContext(string objContext)
     {
         var gc = JsonSerializer.Deserialize<GeneratorContext>(objContext, JsonOptions);

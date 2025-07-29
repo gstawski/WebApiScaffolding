@@ -1,15 +1,17 @@
-﻿using WebApiScaffolding.Models.WorkspaceModel;
+﻿using WebApiScaffolding.Models.Configuration;
+using WebApiScaffolding.Models.WorkspaceModel;
 
 namespace WebApiScaffolding.Services;
 
 public class ClassMetaBuilderBase
 {
-    protected string ValueObjectClass { get; }
+    public AppConfig Config { get; }
+
     private readonly Dictionary<string, WorkspaceSymbol> _symbols;
 
-    protected ClassMetaBuilderBase(Dictionary<string, WorkspaceSymbol> symbols, string valueObjectClass)
+    protected ClassMetaBuilderBase(Dictionary<string, WorkspaceSymbol> symbols, AppConfig config)
     {
-        ValueObjectClass = valueObjectClass;
+        Config = config;
         _symbols = symbols;
     }
 

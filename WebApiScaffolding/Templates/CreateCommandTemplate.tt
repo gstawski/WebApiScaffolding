@@ -9,9 +9,57 @@
 #>
 using SharedKernel.Abstractions.CQRS.Commands;
 using SharedKernel.Contracts;
+<#PrintUsages(ctx);#>
 
 namespace <#=ctx.Namespace#>;
 
-public sealed class Create<#=ctx.ClassName#>Command : <#=ctx.ClassName#>BaseCommand, ICommand<EntityCreatedResponse>
+public sealed class Create<#=ctx.ClassName#>Command : <#=ctx.ClassName#>BaseCommand<#= (ctx.Order == 0 ? ", ICommand<EntityCreatedResponse>" : string.Empty) #>
 {
+<#PrintProperties(ctx);#>
 }
+<#+
+    public void PrintUsages(GeneratorContext ctx)
+    {
+        if (ctx.MetaData.Namespaces == null)
+        {
+            return;
+        }
+
+        foreach (var n in ctx.MetaData.Namespaces)
+        {
+#>
+using <#= n #>;
+<#+
+        }
+    }
+
+    public void PrintProperties(GeneratorContext ctx)
+    {
+        foreach (var prop in ctx.MetaData.Properties)
+        {
+            if (prop.IsCollection)
+            {
+#>
+    public List<<#= TypeName(prop) #>> <#= prop.Name #> { get; set; } = new();
+<#+
+            }
+            else
+            {
+#>
+    public <#= TypeName(prop) #> <#= prop.Name #> { get; set; } = new();
+<#+
+            }
+        }
+    }
+
+    public static string TypeName(PropertyMeta prop)
+    {
+        string typeName = prop.Type;
+        if (typeName.EndsWith("?"))
+        {
+            typeName = typeName.TrimEnd('?');
+            return $"Create{typeName}Command?";
+        }
+        return $"Create{typeName}Command";
+    }
+#>

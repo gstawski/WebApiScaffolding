@@ -148,4 +148,17 @@ internal static class SyntaxHelpers
 
         return false;
     }
+
+    public static (string Namespace, string ClassName) SplitFullName(string input)
+    {
+        int lastDotIndex = input.LastIndexOf('.');
+
+        if (lastDotIndex == -1 || lastDotIndex == 0 || lastDotIndex == input.Length - 1)
+            throw new FormatException("Input must contain at least one dot!");
+
+        string prefix = input.Substring(0, lastDotIndex);
+        string suffix = input.Substring(lastDotIndex + 1);
+
+        return (prefix, suffix);
+    }
 }

@@ -10,10 +10,14 @@ public class ClassMeta
     [JsonPropertyName("ns")]
     public string NameSpace { get; set; }
 
+    [JsonPropertyName("c")]
+    public int Order { get; set; } = 0;
+
     [JsonInclude]
     [JsonPropertyName("p")]
     public List<PropertyMeta> Properties { get; set; } = new ();
 
-    [JsonPropertyName("st")]
-    public List<ClassMeta> SubTypes { get; set; }
+    [JsonInclude]
+    [JsonPropertyName("nss")]
+    public List<string> Namespaces { get; set; } = new ();
 }

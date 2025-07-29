@@ -4,9 +4,11 @@
 <#@ import namespace="System.Text" #>
 <#@ import namespace="WebApiScaffolding.Models.Templates" #>
 <#@ parameter name="context" type="System.String" #>
+<#@ import namespace="System.Diagnostics.Eventing.Reader" #>
 <#
     GeneratorContext ctx = new GeneratorContext(context);
 #>
+using System.ComponentModel.DataAnnotations;
 using Application.Contracts.Common;
 using Application.Contracts.Common.Dtos;
 
@@ -22,9 +24,19 @@ public class <#=ctx.ClassName#>BaseCommand
     {
         foreach (var prop in ctx.MetaData.Properties)
         {
+            if (prop.Type.EndsWith("?"))
+            {
 #>
-    public <#=prop.Type#> <#=prop.Name#> { get; init; }
+    public <#= prop.Type #> <#= prop.Name #> { get; init; }
 <#+
+            }
+            else
+            {
+#>
+    [Required]
+    public <#= prop.Type #> <#= prop.Name #> { get; init; }
+<#+
+            }
         }
     }
 #>

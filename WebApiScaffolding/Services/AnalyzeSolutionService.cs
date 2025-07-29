@@ -1,11 +1,7 @@
-﻿using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using WebApiScaffolding.Interfaces;
 using WebApiScaffolding.Models.Configuration;
-using WebApiScaffolding.Models.SyntaxWalkers;
-using WebApiScaffolding.Models.Templates;
 using WebApiScaffolding.Models.WorkspaceModel;
 using WebApiScaffolding.SyntaxWalkers;
 
@@ -20,32 +16,6 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
 
     private Dictionary<string, WorkspaceSymbol> _allProjectSymbols = new();
 
-    private static bool IsPrimitiveType(ITypeSymbol typeSymbol)
-    {
-        switch (typeSymbol.SpecialType)
-        {
-            case SpecialType.System_Boolean:
-            case SpecialType.System_Byte:
-            case SpecialType.System_SByte:
-            case SpecialType.System_Int16:
-            case SpecialType.System_UInt16:
-            case SpecialType.System_Int32:
-            case SpecialType.System_UInt32:
-            case SpecialType.System_Int64:
-            case SpecialType.System_UInt64:
-            case SpecialType.System_IntPtr:
-            case SpecialType.System_UIntPtr:
-            case SpecialType.System_Char:
-            case SpecialType.System_Double:
-            case SpecialType.System_Single:
-            case SpecialType.System_String:
-            case SpecialType.System_DateTime:
-                return true;
-            default:
-                return false;
-        }
-    }
-
     private static WorkspaceSymbol? FindSymbolByName(
         Dictionary<string, WorkspaceSymbol> allProjectSymbols,
         string className,
@@ -57,7 +27,7 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
         {
             domainNamespace += ".";
 
-            if (allProjectSymbols.TryGetValue($"{domainNamespace}{className}", out var foundSymbol))
+            if (allProjectSymbols.TryGetValue($"{domainNamespace}.{className}", out var foundSymbol))
             {
                 return foundSymbol;
             }
@@ -72,6 +42,11 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
         }
         else
         {
+            if (allProjectSymbols.TryGetValue(className, out var foundSymbol))
+            {
+                return foundSymbol;
+            }
+
             foreach (var symbol in allProjectSymbols.Values)
             {
                 if (symbol.Name == className)
@@ -84,106 +59,141 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
         return null;
     }
 
-    private static List<IPropertySymbol> GetPropertiesSetByPrimaryConstructor(SemanticModel semanticModel,
-        ClassDeclarationSyntax classDeclaration, Func<string, WorkspaceSymbol?> findSymbolByName)
+    private static List<WorkspaceSymbol> GetChildSymbolsToGenerate(
+        WorkspaceSymbol symbol,
+        AppConfig appConfig,
+        Dictionary<string, int> uniqueCheck,
+        Dictionary<string, WorkspaceSymbol> allProjectSymbols)
     {
-        var results = new List<IPropertySymbol>();
-
-        var classSymbol = semanticModel.GetDeclaredSymbol(classDeclaration);
-        if (classSymbol == null)
-        {
-            return results;
-        }
-
-        var primaryBaseType = classDeclaration.BaseList?.Types
-            .OfType<PrimaryConstructorBaseTypeSyntax>()
-            .FirstOrDefault();
-
-        if (primaryBaseType != null)
-        {
-            var symbol = findSymbolByName(primaryBaseType.Type.ToString());
-
-            if (symbol == null)
-            {
-                return results;
-            }
-
-            var currentType = symbol.Symbol;
-            while (currentType != null)
-            {
-                var valueProperty = currentType.GetMembers()
-                    .OfType<IPropertySymbol>()
-                    .FirstOrDefault(p => p.GetMethod != null);
-
-                if (valueProperty != null)
-                {
-                    results.Add(valueProperty);
-                    break;
-                }
-
-                currentType = currentType.BaseType;
-            }
-        }
-
-        return results;
-    }
-
-    private static (string typeName, bool isSimple) GetBaseType(WorkspaceSymbol symbol, SyntaxPropertyMeta propertyMeta, Func<string, WorkspaceSymbol?> findSymbolByName)
-    {
-        if (symbol.DeclarationSyntaxForClass == null)
-        {
-            return (propertyMeta.Type, propertyMeta.IsSimpleType);
-        }
+        var symbols = new List<WorkspaceSymbol>();
 
         var publicPropertiesCollector = new FindPublicPropertiesCollector(symbol.Model);
         publicPropertiesCollector.Visit(symbol.DeclarationSyntaxForClass);
-        if (publicPropertiesCollector.Properties.Count == 1)
-        {
-            var nullAble = propertyMeta.Type.EndsWith("?") ? "?" : string.Empty;
-            return (publicPropertiesCollector.Properties.First().Type + nullAble, true);
-        }
 
-        var constructorCollector = new FindConstructorCollector(symbol.Model);
-        constructorCollector.Visit(symbol.DeclarationSyntaxForClass);
-        if (constructorCollector.Constructors.Count > 0)
+        if (publicPropertiesCollector.Properties.Count > 0)
         {
-            var prop1 = constructorCollector.Constructors.First().GetPropertiesSetInConstructor(findSymbolByName);
-            if (prop1.Count == 1)
+            var dictionaryBaseClass = appConfig.DictionaryBaseClass;
+            var entityBaseClass = appConfig.EntityBaseClass;
+
+            foreach (var prop in publicPropertiesCollector.Properties)
             {
-                var fproperty1 = prop1.First();
-                return (fproperty1.Type.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat), IsPrimitiveType(fproperty1.Type));
-            }
+                if (uniqueCheck.ContainsKey(prop.FullName))
+                {
+                    continue;
+                }
 
-            var prop2 = GetPropertiesSetByPrimaryConstructor(symbol.Model, symbol.DeclarationSyntaxForClass, findSymbolByName);
-            if (prop2.Count == 1)
-            {
-                var fproperty2 = prop2.First();
-                return (fproperty2.Type.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat), IsPrimitiveType(fproperty2.Type));
+                if (!prop.IsSimpleType)
+                {
+                    if (!prop.IsCollection)
+                    {
+                        var psymbol = FindSymbolByName(allProjectSymbols, prop.Type, null);
+                        if (psymbol != null)
+                        {
+                            if (!SyntaxHelpers.IsClassInheritingFrom(psymbol, dictionaryBaseClass)
+                                && SyntaxHelpers.IsClassInheritingFrom(psymbol, entityBaseClass))
+                            {
+                                symbols.Add(psymbol);
+                            }
+                        }
+                    }
+                    else if (prop.IsCollection)
+                    {
+                        var className = prop.UnderlyingGenericTypeName;
+                        if (!string.IsNullOrEmpty(className))
+                        {
+                            var psymbol = FindSymbolByName(allProjectSymbols, className, null);
+                            if (psymbol != null)
+                            {
+                                if (!SyntaxHelpers.IsClassInheritingFrom(psymbol, dictionaryBaseClass)
+                                    && SyntaxHelpers.IsClassInheritingFrom(psymbol, entityBaseClass))
+                                {
+                                    symbols.Add(psymbol);
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
-        if (propertyMeta.Type.EndsWith("?"))
-        {
-            return (propertyMeta.Type.Trim('?') + "Dto?", propertyMeta.IsSimpleType);
-        }
-
-        return (propertyMeta.Type + "Dto", propertyMeta.IsSimpleType);
+        return symbols;
     }
 
-    private static PropertyMeta GetPropertyForValueObject(WorkspaceSymbol symbol, SyntaxPropertyMeta propertyMeta, Func<string, WorkspaceSymbol?> findSymbolByName)
+    private async Task GenerateConfiguration(WorkspaceSolution solution, WorkspaceSymbol symbol, string? filePath, Dictionary<string, string> config, Dictionary<string, int> uniqueCheck)
     {
-        var (typeName, isSimple) = GetBaseType(symbol, propertyMeta, findSymbolByName);
+        var builder = new ClassMetaBuilderForConfiguration(_allProjectSymbols, solution, _appConfig.Value);
+        var classMeta = builder.BuildClassMeta(symbol);
+        filePath = await _generateCodeService.GenerateCodeForConfiguration(classMeta, filePath, config);
 
-        return new PropertyMeta
+        uniqueCheck.TryAdd(symbol.FullName, 0);
+
+        var childSymbols = GetChildSymbolsToGenerate(symbol, _appConfig.Value, uniqueCheck, _allProjectSymbols);
+
+        foreach (var psymbol in childSymbols)
         {
-            Name = propertyMeta.Name,
-            Type = typeName,
-            IsSimpleType = isSimple,
-            Order = propertyMeta.Order,
-            IsSetPublic = propertyMeta.IsSetPublic,
-            IsCollection = propertyMeta.IsCollection,
-            IsValueObject = true,
-        };
+            await GenerateConfiguration(solution, psymbol, filePath, config, uniqueCheck);
+        }
+    }
+
+    private async Task GenerateBaseContracts(WorkspaceSymbol symbol, string? filePath, Dictionary<string, string> config, Dictionary<string, int> uniqueCheck)
+    {
+        var builder = new ClassMetaBuilderForBaseCommand(_allProjectSymbols, _appConfig.Value);
+        var classMeta = builder.BuildClassMeta(symbol);
+        filePath = await _generateCodeService.GenerateCodeForBaseCommand(classMeta, filePath, config);
+
+        uniqueCheck.TryAdd(symbol.FullName, 0);
+
+        var childSymbols = GetChildSymbolsToGenerate(symbol, _appConfig.Value, uniqueCheck, _allProjectSymbols);
+
+        foreach (var psymbol in childSymbols)
+        {
+            await GenerateBaseContracts(psymbol, filePath, config, uniqueCheck);
+        }
+    }
+
+    private async Task GenerateCreateContracts(WorkspaceSymbol symbol, string? filePath, Dictionary<string, string> config, Dictionary<string, int> uniqueCheck)
+    {
+        var builder = new ClassMetaBuilderForUpdateCommand(_allProjectSymbols, _appConfig.Value, uniqueCheck);
+        var classMeta = builder.BuildClassMeta(symbol);
+
+        classMeta.Order = uniqueCheck.Count;
+
+        filePath = await _generateCodeService.GenerateCodeForCreateCommand(classMeta, filePath, config);
+
+        uniqueCheck.TryAdd(symbol.FullName, 0);
+
+        var childSymbols = GetChildSymbolsToGenerate(symbol, _appConfig.Value, uniqueCheck, _allProjectSymbols);
+
+        foreach (var psymbol in childSymbols)
+        {
+            await GenerateCreateContracts(psymbol, filePath, config, uniqueCheck);
+        }
+    }
+
+    private async Task GenerateUpdateContracts(WorkspaceSymbol symbol, string? filePath, Dictionary<string, string> config, Dictionary<string, int> uniqueCheck)
+    {
+        var builder = new ClassMetaBuilderForUpdateCommand(_allProjectSymbols, _appConfig.Value, uniqueCheck);
+        var classMeta = builder.BuildClassMeta(symbol);
+
+        classMeta.Order = uniqueCheck.Count;
+
+        filePath = await _generateCodeService.GenerateCodeForUpdateCommand(classMeta, filePath, config);
+
+        uniqueCheck.TryAdd(symbol.FullName, 0);
+
+        var childSymbols = GetChildSymbolsToGenerate(symbol, _appConfig.Value, uniqueCheck, _allProjectSymbols);
+
+        foreach (var psymbol in childSymbols)
+        {
+            await GenerateUpdateContracts(psymbol, filePath, config, uniqueCheck);
+        }
+    }
+
+    private async Task GenerateContracts(WorkspaceSymbol symbol, string? filePath, Dictionary<string, string> config, Dictionary<string, int> uniqueCheck)
+    {
+        await GenerateBaseContracts(symbol, filePath, config, uniqueCheck);
+        await GenerateCreateContracts(symbol, filePath, config, uniqueCheck);
+        await GenerateUpdateContracts(symbol, filePath, config, uniqueCheck);
     }
 
     public AnalyzeSolutionService(
@@ -205,26 +215,46 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
             throw new ArgumentException("Solution path must be provided.");
         }
 
+        var solutionDirectory = Path.GetDirectoryName(_commandLineArgs.SolutionPath);
+
+        if (string.IsNullOrEmpty(solutionDirectory))
+        {
+            throw new ArgumentException("Solution path not exists.");
+        }
+
         var solution = await WorkspaceSolution.Load(_commandLineArgs.SolutionPath, s => _logger.LogInformation(s));
 
         _allProjectSymbols = await solution.AllProjectSymbols();
-
-        //var configurationSymbol = FindSymbolByName(_allProjectSymbols, $"{_commandLineArgs.ClassName}Configuration", _appConfig.Value.InfrastructureNamespace);
 
         var symbol = FindSymbolByName(_allProjectSymbols, _commandLineArgs.ClassName, _appConfig.Value.DomainNamespace);
 
         if (symbol != null)
         {
             _logger.LogInformation($"Found class: {symbol.Name} in namespace {symbol.Namespace}");
-
             {
-                var builder = new ClassMetaBuilderForTemplate(_allProjectSymbols, solution, _appConfig.Value.DomainNamespace, _appConfig.Value.ValueObjectClass );
-                var classMeta = builder.BuildClassMeta(symbol);
+                var config = new Dictionary<string, string>
+                {
+                    {
+                        ConfigKeys.SolutionPath, solutionDirectory
+                    },
+                    {
+                        ConfigKeys.NameSpace, $"{_appConfig.Value.InfrastructureNamespace}.{symbol.Name}s"
+                    }
+                };
+                await GenerateConfiguration(solution, symbol, null, config, new Dictionary<string, int>());
             }
             {
-                var builder = new ClassMetaBuilderForCommand(_allProjectSymbols, _appConfig.Value.ValueObjectClass);
-                var classMeta = builder.BuildClassMeta(symbol);
-                await _generateCodeService.GenerateCodeForCommands(classMeta, Path.GetDirectoryName(_commandLineArgs.SolutionPath));
+                var config = new Dictionary<string, string>
+                {
+                    {
+                        ConfigKeys.SolutionPath, solutionDirectory
+                    },
+                    {
+                        ConfigKeys.NameSpace, $"{_appConfig.Value.ContractsNamespace}.{symbol.Name}s.Commands"
+                    }
+                };
+
+                await GenerateContracts(symbol, null, config, new Dictionary<string, int>());
             }
         }
         else

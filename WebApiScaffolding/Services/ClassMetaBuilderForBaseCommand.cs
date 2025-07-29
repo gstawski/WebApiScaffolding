@@ -1,6 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using WebApiScaffolding.Interfaces;
+using WebApiScaffolding.Models.Configuration;
 using WebApiScaffolding.Models.SyntaxWalkers;
 using WebApiScaffolding.Models.Templates;
 using WebApiScaffolding.Models.WorkspaceModel;
@@ -11,9 +12,9 @@ using SymbolDisplayFormat = Microsoft.CodeAnalysis.SymbolDisplayFormat;
 
 namespace WebApiScaffolding.Services;
 
-public class ClassMetaBuilderForCommand : ClassMetaBuilderBase, IClassMetaBuilder
+public class ClassMetaBuilderForBaseCommand : ClassMetaBuilderBase, IClassMetaBuilder
 {
-    public ClassMetaBuilderForCommand(Dictionary<string, WorkspaceSymbol> symbols, string valueObjectClass) : base(symbols, valueObjectClass)
+    public ClassMetaBuilderForBaseCommand(Dictionary<string, WorkspaceSymbol> symbols, AppConfig conf) : base(symbols, conf)
     {
     }
 
@@ -141,7 +142,7 @@ public class ClassMetaBuilderForCommand : ClassMetaBuilderBase, IClassMetaBuilde
             Order = propertyMeta.Order,
             IsSetPublic = propertyMeta.IsSetPublic,
             IsCollection = propertyMeta.IsCollection,
-            IsValueObject = true,
+            IsValueObject = true
         };
     }
 
@@ -158,15 +159,8 @@ public class ClassMetaBuilderForCommand : ClassMetaBuilderBase, IClassMetaBuilde
         var properties = new List<PropertyMeta>();
         if (publicPropertiesCollector.Properties.Count > 0)
         {
-            //var navigationProperties = SyntaxHelpers.GetPropertiesWithNavigation(configurationSymbol);
-
             foreach (var prop in publicPropertiesCollector.Properties)
             {
-                /*if (navigationProperties.ContainsKey(prop.Name))
-                {
-                    continue;
-                }*/
-
                 if (prop.IsSimpleType)
                 {
                     properties.Add(prop.ToPropertyMeta());
@@ -176,24 +170,14 @@ public class ClassMetaBuilderForCommand : ClassMetaBuilderBase, IClassMetaBuilde
                     var psymbol = FindSymbolByName(prop.Type, null);
                     if (psymbol != null)
                     {
-                        if (SyntaxHelpers.IsClassInheritingFrom(psymbol, ValueObjectClass))
+                        if (SyntaxHelpers.IsClassInheritingFrom(psymbol, Config.DictionaryBaseClass))
+                        {
+                            continue;
+                        }
+
+                        if (SyntaxHelpers.IsClassInheritingFrom(psymbol, Config.ValueObjectClass))
                         {
                             properties.Add(GetPropertyForValueObject(psymbol, prop, (classname) => FindSymbolByName(classname, null)));
-                        }
-                        else
-                        {
-                            properties.Add(new PropertyMeta
-                            {
-                                Name = prop.Name,
-                                Type = prop.Type,
-                                IsSimpleType = false,
-                                Order = prop.Order,
-                                IsSetPublic = prop.IsSetPublic,
-                                IsCollection = prop.IsCollection,
-                                IsValueObject = false,
-                                WithOne = string.Empty,
-                                ForeignKey = string.Empty
-                            });
                         }
                     }
                 }

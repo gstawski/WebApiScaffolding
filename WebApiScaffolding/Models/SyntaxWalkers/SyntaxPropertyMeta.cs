@@ -9,6 +9,8 @@ public class SyntaxPropertyMeta
 {
     private readonly PropertyDeclarationSyntax _propertyDeclaration;
 
+    private readonly ITypeSymbol? _typeSymbol;
+
     private static bool IsPublic(AccessorDeclarationSyntax accessor)
     {
         foreach (SyntaxToken token in accessor.Modifiers)
@@ -22,9 +24,8 @@ public class SyntaxPropertyMeta
         return true;
     }
 
-    private static bool IsCollectionType(TypeSyntax typeSyntax, SemanticModel semanticModel)
+    private static bool IsCollectionType(ITypeSymbol? typeSymbol)
     {
-        var typeSymbol = semanticModel.GetTypeInfo(typeSyntax).Type;
         if (typeSymbol == null)
         {
             return false;
@@ -44,8 +45,12 @@ public class SyntaxPropertyMeta
                typeSymbol.Name.EndsWith("List");
     }
 
-    private static bool DatesAreSimpleTypes(string typeName)
+    private static bool SystemTypeSimpleTypeCheck(string typeName)
     {
+        if (typeName.EndsWith("Guid") || typeName.EndsWith("Guid?"))
+        {
+            return true;
+        }
         if (typeName.EndsWith("DateOnly") || typeName.EndsWith("DateOnly?"))
         {
             return true;
@@ -70,6 +75,7 @@ public class SyntaxPropertyMeta
     {
         Order = order;
         _propertyDeclaration = node;
+        _typeSymbol = model.GetTypeInfo(node.Type).Type;
 
         if (node.AccessorList != null && node.AccessorList.Accessors.Count > 0)
         {
@@ -86,12 +92,12 @@ public class SyntaxPropertyMeta
                            (node.Type is NullableTypeSyntax nullableType && nullableType.ElementType is PredefinedTypeSyntax);
         if (!IsSimpleType)
         {
-            if (DatesAreSimpleTypes(Type))
+            if (SystemTypeSimpleTypeCheck(Type))
             {
                 IsSimpleType = true;
             }
 
-            IsCollection = IsCollectionType(node.Type, model);
+            IsCollection = IsCollectionType(_typeSymbol);
         }
     }
 
@@ -106,6 +112,28 @@ public class SyntaxPropertyMeta
     public bool IsSetPublic { get; }
 
     public bool IsCollection { get; set; }
+
+    public string FullName => _typeSymbol?.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat) ?? string.Empty;
+
+    public string UnderlyingGenericTypeName
+    {
+        get
+        {
+            if (_typeSymbol != null)
+            {
+                var symbol = (INamedTypeSymbol)_typeSymbol;
+                if (symbol.IsGenericType)
+                {
+                    foreach (var type in symbol.TypeArguments)
+                    {
+                        return type.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
+                    }
+                }
+            }
+
+            return string.Empty;
+        }
+    }
 
     public PropertyMeta ToPropertyMeta()
     {
