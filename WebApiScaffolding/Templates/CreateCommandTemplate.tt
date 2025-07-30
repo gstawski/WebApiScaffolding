@@ -7,8 +7,15 @@
 <#
     GeneratorContext ctx = new GeneratorContext(context);
 #>
+<#
+if (ctx.Order == 0)
+{
+#>
 using SharedKernel.Abstractions.CQRS.Commands;
 using SharedKernel.Contracts;
+<#
+}
+#>
 <#PrintUsages(ctx);#>
 
 namespace <#=ctx.Namespace#>;

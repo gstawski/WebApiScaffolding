@@ -4,7 +4,6 @@
 <#@ import namespace="System.Text" #>
 <#@ import namespace="WebApiScaffolding.Models.Templates" #>
 <#@ parameter name="context" type="System.String" #>
-<#@ import namespace="System.Diagnostics.Eventing.Reader" #>
 <#
     GeneratorContext ctx = new GeneratorContext(context);
 #>

@@ -20,4 +20,16 @@ public class ClassMeta
     [JsonInclude]
     [JsonPropertyName("nss")]
     public List<string> Namespaces { get; set; } = new ();
+
+    public ClassMeta Clone()
+    {
+        return new ClassMeta
+        {
+            Name = Name,
+            NameSpace = NameSpace,
+            Order = Order,
+            Properties = [..Properties.ConvertAll(p => p.Clone())],
+            Namespaces = [..Namespaces]
+        };
+    }
 }

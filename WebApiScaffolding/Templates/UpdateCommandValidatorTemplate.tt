@@ -1,0 +1,91 @@
+<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ output extension=".cs" #>
+<#@ import namespace="System" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="WebApiScaffolding.Models.Templates" #>
+<#@ parameter name="context" type="System.String" #>
+<#
+    GeneratorContext ctx = new GeneratorContext(context);
+#>
+using FluentValidation;
+using Application.Contracts.Common;
+<#PrintUsages(ctx);#>
+
+namespace <#=ctx.Namespace#>;
+
+public sealed class Update<#=ctx.ClassName#>CommandValidator : AbstractValidator<Update<#=ctx.ClassName#>Command>
+{
+    public Update<#=ctx.ClassName#>CommandValidator(
+        <#=ctx.ClassName#>BaseCommandValidator baseCommandValidator
+<#Validators(ctx);#>)
+    {
+        Include(baseCommandValidator);
+<#PrintRules(ctx);#>
+    }
+}
+<#+
+    public void PrintUsages(GeneratorContext ctx)
+    {
+        if (ctx.MetaData.Namespaces == null)
+        {
+            return;
+        }
+
+        foreach (var n in ctx.MetaData.Namespaces)
+        {
+#>
+using <#= n #>;
+<#+
+        }
+    }
+
+    public void Validators(GeneratorContext ctx)
+    {
+        foreach (var prop in ctx.MetaData.Properties)
+        {
+#>
+        ,Update<#=TypeName(prop) #>CommandValidator <#=TypeNameSmallFirstLetter(prop)#>CommandValidator
+<#+
+        }
+    }
+
+    public void PrintRules(GeneratorContext ctx)
+    {
+        foreach (var prop in ctx.MetaData.Properties)
+        {
+            if (prop.IsCollection)
+            {
+#>
+        RuleForEach(command => command.<#= prop.Name #>).SetValidator(<#=TypeNameSmallFirstLetter(prop)#>CommandValidator);
+<#+
+            }
+            else
+            {
+#>
+        RuleFor(command => command.<#= prop.Name #>).SetValidator(<#=TypeNameSmallFirstLetter(prop)#>CommandValidator);
+<#+
+            }
+        }
+    }
+
+    public static string TypeName(PropertyMeta prop)
+    {
+        string typeName = prop.Type;
+        if (typeName.EndsWith("?"))
+        {
+            return typeName.TrimEnd('?');
+        }
+        return typeName;
+    }
+
+    public static string TypeNameSmallFirstLetter(PropertyMeta prop)
+    {
+        string typeName = prop.Type;
+        if (typeName.EndsWith("?"))
+        {
+            typeName = typeName.TrimEnd('?');
+        }
+
+        return char.ToLower(typeName[0]) + typeName.Substring(1);
+    }
+#>

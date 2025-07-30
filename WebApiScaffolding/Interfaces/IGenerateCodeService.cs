@@ -1,11 +1,12 @@
-﻿using WebApiScaffolding.Models.Templates;
+﻿using WebApiScaffolding.Models.ServicesModel;
+using WebApiScaffolding.Models.Templates;
 
 namespace WebApiScaffolding.Interfaces;
 
 public interface IGenerateCodeService
 {
-    Task<string> GenerateCodeForConfiguration(ClassMeta metadata, string? filePath, Dictionary<string,string> config);
-    Task<string> GenerateCodeForBaseCommand(ClassMeta metadata, string? filePath, Dictionary<string, string> config);
-    Task<string> GenerateCodeForCreateCommand(ClassMeta metadata, string? filePath, Dictionary<string, string> config);
-    Task<string> GenerateCodeForUpdateCommand(ClassMeta metadata, string? filePath, Dictionary<string, string> config);
+    Task GenerateCodeForConfiguration(ClassMeta metadata, GenerateCodeServiceConfig config);
+    Task GenerateCodeForBaseCommand(ClassMeta metadata, GenerateCodeServiceConfig config);
+    Task GenerateCodeForCreateCommand(ClassMeta metadata, GenerateCodeServiceConfig config);
+    Task GenerateCodeForUpdateCommand(ClassMeta metadata, GenerateCodeServiceConfig config);
 }

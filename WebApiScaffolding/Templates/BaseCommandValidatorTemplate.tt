@@ -1,0 +1,66 @@
+<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ output extension=".cs" #>
+<#@ import namespace="System" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="WebApiScaffolding.Models.Templates" #>
+<#@ parameter name="context" type="System.String" #>
+<#
+    GeneratorContext ctx = new GeneratorContext(context);
+#>
+using FluentValidation;
+using Application.Contracts.Common;
+using Domain.Common.Exceptions;
+using System.Text;
+<#PrintUsages(ctx);#>
+
+namespace <#=ctx.Namespace#>;
+
+public class <#=ctx.ClassName#>BaseCommandValidator : AbstractValidator<<#=ctx.ClassName#>BaseCommand>
+{
+    public <#=ctx.ClassName#>BaseCommandValidator()
+    {
+<#PrintRules(ctx);#>
+    }
+}
+
+<#+
+    public void PrintUsages(GeneratorContext ctx)
+    {
+        if (ctx.MetaData.Namespaces == null)
+        {
+            return;
+        }
+
+        foreach (var n in ctx.MetaData.Namespaces)
+        {
+#>
+using <#= n #>;
+<#+
+        }
+    }
+
+    public void PrintRules(GeneratorContext ctx)
+    {
+        foreach (var prop in ctx.MetaData.Properties)
+        {
+            if (prop.Type == "string")
+            {
+#>
+        RuleFor(x => x.<#= prop.Name #>)
+            .NotEmpty()
+            .WithErrorCode(ValidationErrorCode.NotEmpty)
+            .MaximumLength(<#=ctx.ClassName#>.<#= prop.Name #>Maxength)
+            .WithErrorCode(ValidationErrorCode.MaxLengthExceeded);
+<#+
+            }
+            else if (prop.Type == "string?")
+            {
+#>
+        RuleFor(x => x.<#= prop.Name #>)
+            .MaximumLength(<#=ctx.ClassName#>.<#= prop.Name #>Maxength)
+            .WithErrorCode(ValidationErrorCode.MaxLengthExceeded);
+<#+
+            }
+        }
+    }
+#>

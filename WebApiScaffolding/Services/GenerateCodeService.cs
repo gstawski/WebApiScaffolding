@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using WebApiScaffolding.Interfaces;
 using WebApiScaffolding.Models.Configuration;
+using WebApiScaffolding.Models.ServicesModel;
 using WebApiScaffolding.Models.Templates;
 
 namespace WebApiScaffolding.Services;
@@ -23,105 +24,136 @@ public class GenerateCodeService : IGenerateCodeService
         _templateService = templateService;
     }
 
-    public async Task<string> GenerateCodeForConfiguration(ClassMeta metadata, string? filePath, Dictionary<string,string> config)
+    public async Task GenerateCodeForConfiguration(ClassMeta metadata, GenerateCodeServiceConfig config)
     {
-        var solutionPath = config[ConfigKeys.SolutionPath];
-        var path = filePath ?? CreateDirectoriesForConfiguration(metadata, solutionPath);
+        if (string.IsNullOrEmpty(config.MainPath))
         {
-            GeneratorContext generator = new GeneratorContext(metadata, config[ConfigKeys.NameSpace]);
+            CreateDirectoriesForConfiguration(metadata, config, _appConfig.Value);
+        }
+        {
+            GeneratorContext generator = new GeneratorContext(metadata, config.Namespace);
 
             var code = await _templateService.GeneratedCode("ConfigurationTemplate.tt", generator);
 
-            await File.WriteAllTextAsync(Path.Combine(solutionPath, path, $"{metadata.Name}Configuration.cs"), code, Encoding.UTF8);
+            await File.WriteAllTextAsync(Path.Combine(config.SolutionPath, config.MainPath!, $"{metadata.Name}Configuration.cs"), code, Encoding.UTF8);
         }
-
-        return path;
     }
 
-    public async Task<string> GenerateCodeForBaseCommand(ClassMeta metadata, string? filePath, Dictionary<string,string> config)
+    public async Task GenerateCodeForBaseCommand(ClassMeta metadata, GenerateCodeServiceConfig config)
     {
-        var solutionPath = config[ConfigKeys.SolutionPath];
-        var nameSpace = config[ConfigKeys.NameSpace];
-        var path = filePath ?? CreateDirectoriesForContracts(metadata, solutionPath);
+        if (string.IsNullOrEmpty(config.MainPath))
         {
-            GeneratorContext generator = new GeneratorContext(metadata, nameSpace);
+            CreateDirectoriesForContracts(metadata, config, _appConfig.Value);
+        }
+        {
+            GeneratorContext generator = new GeneratorContext(metadata, config.Namespace);
 
             var code = await _templateService.GeneratedCode("BaseCommandTemplate.tt", generator);
 
-            await File.WriteAllTextAsync(Path.Combine(solutionPath, path, $"{metadata.Name}BaseCommand.cs"), code, Encoding.UTF8);
+            await File.WriteAllTextAsync(Path.Combine(config.SolutionPath, config.MainPath!, $"{metadata.Name}BaseCommand.cs"), code, Encoding.UTF8);
         }
-        return path;
+        {
+            var newMetadata = metadata.Clone();
+
+            newMetadata.Namespaces.Add(config.Namespace);
+
+            GeneratorContext generator = new GeneratorContext(newMetadata, config.CommandsNamespace);
+
+            var code = await _templateService.GeneratedCode("BaseCommandValidatorTemplate.tt", generator);
+
+            await File.WriteAllTextAsync(Path.Combine(config.SolutionPath, config.AllCreatedPaths![^3], $"{newMetadata.Name}BaseCommandValidator.cs"), code, Encoding.UTF8);
+        }
     }
 
-    public async Task<string> GenerateCodeForCreateCommand(ClassMeta metadata, string? filePath, Dictionary<string,string> config)
+    public async Task GenerateCodeForCreateCommand(ClassMeta metadata, GenerateCodeServiceConfig config)
     {
-        var solutionPath = config[ConfigKeys.SolutionPath];
-        var nameSpace = config[ConfigKeys.NameSpace];
-        var path = filePath ?? CreateDirectoriesForContracts(metadata, solutionPath);
+        if (string.IsNullOrEmpty(config.MainPath))
         {
-            GeneratorContext generator = new GeneratorContext(metadata, nameSpace +".Create");
+            CreateDirectoriesForContracts(metadata, config, _appConfig.Value);
+        }
+        {
+            GeneratorContext generator = new GeneratorContext(metadata, config.Namespace +".Create");
 
             var code = await _templateService.GeneratedCode("CreateCommandTemplate.tt", generator);
 
-            await File.WriteAllTextAsync(Path.Combine(solutionPath, path, "Create", $"Create{metadata.Name}Command.cs"), code, Encoding.UTF8);
+            await File.WriteAllTextAsync(Path.Combine(config.SolutionPath, config.MainPath!, "Create", $"Create{metadata.Name}Command.cs"), code, Encoding.UTF8);
         }
         {
-            GeneratorContext generator = new GeneratorContext(metadata, nameSpace + ".Update");
+            var newMetadata = metadata.Clone();
+
+            newMetadata.Namespaces.Add(config.Namespace +".Create");
+
+            GeneratorContext generator = new GeneratorContext(newMetadata, $"{config.CommandsNamespace}.Create");
+
+            var code = await _templateService.GeneratedCode("CreateCommandValidatorTemplate.tt", generator);
+
+            await File.WriteAllTextAsync(Path.Combine(config.SolutionPath, config.AllCreatedPaths![^2], $"Create{newMetadata.Name}CommandValidator.cs"), code, Encoding.UTF8);
+        }
+    }
+
+    public async Task GenerateCodeForUpdateCommand(ClassMeta metadata, GenerateCodeServiceConfig config)
+    {
+        if (string.IsNullOrEmpty(config.MainPath))
+        {
+            CreateDirectoriesForContracts(metadata, config, _appConfig.Value);
+        }
+        {
+            GeneratorContext generator = new GeneratorContext(metadata, config.Namespace + ".Update");
 
             var code = await _templateService.GeneratedCode("UpdateCommandTemplate.tt", generator);
 
-            await File.WriteAllTextAsync(Path.Combine(solutionPath, path, "Update", $"Update{metadata.Name}Command.cs"), code, Encoding.UTF8);
+            await File.WriteAllTextAsync(Path.Combine(config.SolutionPath, config.MainPath!, "Update", $"Update{metadata.Name}Command.cs"), code, Encoding.UTF8);
         }
-
-        return path;
-    }
-
-    public async Task<string> GenerateCodeForUpdateCommand(ClassMeta metadata, string? filePath, Dictionary<string,string> config)
-    {
-        var solutionPath = config[ConfigKeys.SolutionPath];
-        var nameSpace = config[ConfigKeys.NameSpace];
-        var path = filePath ?? CreateDirectoriesForContracts(metadata, solutionPath);
         {
-            GeneratorContext generator = new GeneratorContext(metadata, nameSpace + ".Update");
+            var newMetadata = metadata.Clone();
 
-            var code = await _templateService.GeneratedCode("UpdateCommandTemplate.tt", generator);
+            newMetadata.Namespaces.Add(config.Namespace +".Update");
 
-            await File.WriteAllTextAsync(Path.Combine(solutionPath, path, "Update", $"Update{metadata.Name}Command.cs"), code, Encoding.UTF8);
+            GeneratorContext generator = new GeneratorContext(newMetadata, $"{config.CommandsNamespace}.Update");
+
+            var code = await _templateService.GeneratedCode("UpdateCommandValidatorTemplate.tt", generator);
+
+            await File.WriteAllTextAsync(Path.Combine(config.SolutionPath, config.AllCreatedPaths![^1], $"Update{newMetadata.Name}CommandValidator.cs"), code, Encoding.UTF8);
         }
-
-        return path;
     }
 
-    private string CreateDirectoriesForContracts(ClassMeta metadata, string solutionPath)
+    private void CreateDirectoriesForContracts(ClassMeta metadata, GenerateCodeServiceConfig config, AppConfig appConfig)
     {
-        var directory = _appConfig.Value.ContractsPath;
-        string[] paths = {
-            directory,
-            $"{directory}\\{metadata.Name}s",
-            $"{directory}\\{metadata.Name}s\\Commands",
-            $"{directory}\\{metadata.Name}s\\Create",
-            $"{directory}\\{metadata.Name}s\\Update"
-        };
+        var contractsPath = appConfig.ContractsPath;
+        var commandsPath = appConfig.CommandsPath;
+        List<string> paths = [
+            contractsPath,
+            $"{contractsPath}\\{metadata.Name}s",
+            $"{contractsPath}\\{metadata.Name}s\\Commands",
+            $"{contractsPath}\\{metadata.Name}s\\Create",
+            $"{contractsPath}\\{metadata.Name}s\\Update",
+            commandsPath,
+            $"{commandsPath}\\{metadata.Name}s",
+            $"{commandsPath}\\{metadata.Name}s\\Create",
+            $"{commandsPath}\\{metadata.Name}s\\Update"
+        ];
 
-        CreateDirectorySafely(solutionPath, paths);
+        CreateDirectorySafely(config.SolutionPath, paths);
 
-        return paths.First(x=>x.EndsWith("Commands"));
+        config.AllCreatedPaths = paths;
+        config.MainPath = paths.First(x=>x.EndsWith("Commands"));
     }
 
-    private string CreateDirectoriesForConfiguration(ClassMeta metadata, string solutionPath)
+    private void CreateDirectoriesForConfiguration(ClassMeta metadata, GenerateCodeServiceConfig config, AppConfig appConfig)
     {
-        var directory = _appConfig.Value.InfrastructurePath;
-        string[] paths = {
-            directory,
-            $"{directory}\\{metadata.Name}s"
-        };
+        var infrastructurePath = appConfig.InfrastructurePath;
+        List<string> paths = [
+            infrastructurePath,
+            $"{infrastructurePath}\\{metadata.Name}s"
+        ];
 
-        CreateDirectorySafely(solutionPath, paths);
+        CreateDirectorySafely(config.SolutionPath, paths);
 
-        return paths.Last();
+        config.AllCreatedPaths = paths;
+        config.MainPath = paths.Last();
     }
 
-    private void CreateDirectorySafely(string solutionPath, string[] paths)
+    private void CreateDirectorySafely(string solutionPath, List<string> paths)
     {
         foreach (var path in paths)
         {

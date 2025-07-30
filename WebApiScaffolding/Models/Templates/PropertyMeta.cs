@@ -30,4 +30,20 @@ public class PropertyMeta
 
     [JsonPropertyName("f")]
     public string ForeignKey { get; set; }
+
+    public PropertyMeta Clone()
+    {
+        return new PropertyMeta
+        {
+            Name = Name,
+            Type = Type,
+            IsSimpleType = IsSimpleType,
+            Order = Order,
+            IsSetPublic = IsSetPublic,
+            IsCollection = IsCollection,
+            IsValueObject = IsValueObject,
+            WithOne = WithOne,
+            ForeignKey = ForeignKey
+        };
+    }
 }

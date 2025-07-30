@@ -7,8 +7,15 @@
 <#
     GeneratorContext ctx = new GeneratorContext(context);
 #>
+<#
+if (ctx.Order == 0)
+{
+#>
 using MediatR;
 using SharedKernel.Abstractions.CQRS.Commands;
+<#
+}
+#>
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 <#PrintUsages(ctx);#>

@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Options;
 using WebApiScaffolding.Interfaces;
 using WebApiScaffolding.Models.Configuration;
+using WebApiScaffolding.Models.ServicesModel;
 using WebApiScaffolding.Models.WorkspaceModel;
 using WebApiScaffolding.SyntaxWalkers;
 
@@ -119,11 +120,11 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
         return symbols;
     }
 
-    private async Task GenerateConfiguration(WorkspaceSolution solution, WorkspaceSymbol symbol, string? filePath, Dictionary<string, string> config, Dictionary<string, int> uniqueCheck)
+    private async Task GenerateConfiguration(WorkspaceSolution solution, WorkspaceSymbol symbol, GenerateCodeServiceConfig config, Dictionary<string, int> uniqueCheck)
     {
         var builder = new ClassMetaBuilderForConfiguration(_allProjectSymbols, solution, _appConfig.Value);
         var classMeta = builder.BuildClassMeta(symbol);
-        filePath = await _generateCodeService.GenerateCodeForConfiguration(classMeta, filePath, config);
+        await _generateCodeService.GenerateCodeForConfiguration(classMeta, config);
 
         uniqueCheck.TryAdd(symbol.FullName, 0);
 
@@ -131,15 +132,15 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
 
         foreach (var psymbol in childSymbols)
         {
-            await GenerateConfiguration(solution, psymbol, filePath, config, uniqueCheck);
+            await GenerateConfiguration(solution, psymbol, config, uniqueCheck);
         }
     }
 
-    private async Task GenerateBaseContracts(WorkspaceSymbol symbol, string? filePath, Dictionary<string, string> config, Dictionary<string, int> uniqueCheck)
+    private async Task GenerateBaseContracts(WorkspaceSymbol symbol, GenerateCodeServiceConfig config, Dictionary<string, int> uniqueCheck)
     {
         var builder = new ClassMetaBuilderForBaseCommand(_allProjectSymbols, _appConfig.Value);
         var classMeta = builder.BuildClassMeta(symbol);
-        filePath = await _generateCodeService.GenerateCodeForBaseCommand(classMeta, filePath, config);
+        await _generateCodeService.GenerateCodeForBaseCommand(classMeta, config);
 
         uniqueCheck.TryAdd(symbol.FullName, 0);
 
@@ -147,18 +148,18 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
 
         foreach (var psymbol in childSymbols)
         {
-            await GenerateBaseContracts(psymbol, filePath, config, uniqueCheck);
+            await GenerateBaseContracts(psymbol, config, uniqueCheck);
         }
     }
 
-    private async Task GenerateCreateContracts(WorkspaceSymbol symbol, string? filePath, Dictionary<string, string> config, Dictionary<string, int> uniqueCheck)
+    private async Task GenerateCreateContracts(WorkspaceSymbol symbol, GenerateCodeServiceConfig config, Dictionary<string, int> uniqueCheck)
     {
         var builder = new ClassMetaBuilderForUpdateCommand(_allProjectSymbols, _appConfig.Value, uniqueCheck);
         var classMeta = builder.BuildClassMeta(symbol);
 
         classMeta.Order = uniqueCheck.Count;
 
-        filePath = await _generateCodeService.GenerateCodeForCreateCommand(classMeta, filePath, config);
+        await _generateCodeService.GenerateCodeForCreateCommand(classMeta, config);
 
         uniqueCheck.TryAdd(symbol.FullName, 0);
 
@@ -166,18 +167,18 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
 
         foreach (var psymbol in childSymbols)
         {
-            await GenerateCreateContracts(psymbol, filePath, config, uniqueCheck);
+            await GenerateCreateContracts(psymbol, config, uniqueCheck);
         }
     }
 
-    private async Task GenerateUpdateContracts(WorkspaceSymbol symbol, string? filePath, Dictionary<string, string> config, Dictionary<string, int> uniqueCheck)
+    private async Task GenerateUpdateContracts(WorkspaceSymbol symbol, GenerateCodeServiceConfig config, Dictionary<string, int> uniqueCheck)
     {
         var builder = new ClassMetaBuilderForUpdateCommand(_allProjectSymbols, _appConfig.Value, uniqueCheck);
         var classMeta = builder.BuildClassMeta(symbol);
 
         classMeta.Order = uniqueCheck.Count;
 
-        filePath = await _generateCodeService.GenerateCodeForUpdateCommand(classMeta, filePath, config);
+        await _generateCodeService.GenerateCodeForUpdateCommand(classMeta, config);
 
         uniqueCheck.TryAdd(symbol.FullName, 0);
 
@@ -185,15 +186,15 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
 
         foreach (var psymbol in childSymbols)
         {
-            await GenerateUpdateContracts(psymbol, filePath, config, uniqueCheck);
+            await GenerateUpdateContracts(psymbol, config, uniqueCheck);
         }
     }
 
-    private async Task GenerateContracts(WorkspaceSymbol symbol, string? filePath, Dictionary<string, string> config, Dictionary<string, int> uniqueCheck)
+    private async Task GenerateContracts(WorkspaceSymbol symbol, GenerateCodeServiceConfig config)
     {
-        await GenerateBaseContracts(symbol, filePath, config, uniqueCheck);
-        await GenerateCreateContracts(symbol, filePath, config, uniqueCheck);
-        await GenerateUpdateContracts(symbol, filePath, config, uniqueCheck);
+        await GenerateBaseContracts(symbol, config, new Dictionary<string, int>());
+        await GenerateCreateContracts(symbol, config, new Dictionary<string, int>());
+        await GenerateUpdateContracts(symbol, config, new Dictionary<string, int>());
     }
 
     public AnalyzeSolutionService(
@@ -232,29 +233,18 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
         {
             _logger.LogInformation($"Found class: {symbol.Name} in namespace {symbol.Namespace}");
             {
-                var config = new Dictionary<string, string>
-                {
-                    {
-                        ConfigKeys.SolutionPath, solutionDirectory
-                    },
-                    {
-                        ConfigKeys.NameSpace, $"{_appConfig.Value.InfrastructureNamespace}.{symbol.Name}s"
-                    }
-                };
-                await GenerateConfiguration(solution, symbol, null, config, new Dictionary<string, int>());
+                var config = new GenerateCodeServiceConfig(
+                    solutionDirectory,
+                    $"{_appConfig.Value.InfrastructureNamespace}.{symbol.Name}s",
+                    $"{_appConfig.Value.CommandsNamespace}.{symbol.Name}s" );
+                await GenerateConfiguration(solution, symbol, config, new Dictionary<string, int>());
             }
             {
-                var config = new Dictionary<string, string>
-                {
-                    {
-                        ConfigKeys.SolutionPath, solutionDirectory
-                    },
-                    {
-                        ConfigKeys.NameSpace, $"{_appConfig.Value.ContractsNamespace}.{symbol.Name}s.Commands"
-                    }
-                };
-
-                await GenerateContracts(symbol, null, config, new Dictionary<string, int>());
+                var config = new GenerateCodeServiceConfig(
+                    solutionDirectory,
+                    $"{_appConfig.Value.ContractsNamespace}.{symbol.Name}s.Commands",
+                    $"{_appConfig.Value.CommandsNamespace}.{symbol.Name}s");
+                await GenerateContracts(symbol, config);
             }
         }
         else
