@@ -1,0 +1,36 @@
+<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ output extension=".cs" #>
+<#@ import namespace="System" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="WebApiScaffolding.Models.Templates" #>
+<#@ parameter name="context" type="System.String" #>
+<#
+    GeneratorContext ctx = new GeneratorContext(context);
+#>
+<#PrintUsages(ctx);#>
+
+namespace <#=ctx.Namespace#>;
+
+public class <#=ctx.ClassName#>BaseCommandHandler
+{
+    protected <#=ctx.ClassName#>BaseCommandHandler()
+    {
+        //add dictionary repos here if needed
+    }
+}
+<#+
+    public void PrintUsages(GeneratorContext ctx)
+    {
+        if (ctx.MetaData.Namespaces == null)
+        {
+            return;
+        }
+
+        foreach (var n in ctx.MetaData.Namespaces)
+        {
+#>
+using <#= n #>;
+<#+
+        }
+    }
+#>

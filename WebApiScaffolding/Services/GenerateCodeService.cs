@@ -41,8 +41,10 @@ public class GenerateCodeService : IGenerateCodeService
 
     public async Task GenerateCodeForBaseCommand(ClassMeta metadata, GenerateCodeServiceConfig config)
     {
+        bool first = false;
         if (string.IsNullOrEmpty(config.MainPath))
         {
+            first = true;
             CreateDirectoriesForContracts(metadata, config, _appConfig.Value);
         }
         {
@@ -62,6 +64,40 @@ public class GenerateCodeService : IGenerateCodeService
             var code = await _templateService.GeneratedCode("BaseCommandValidatorTemplate.tt", generator);
 
             await File.WriteAllTextAsync(Path.Combine(config.SolutionPath, config.AllCreatedPaths![^3], $"{newMetadata.Name}BaseCommandValidator.cs"), code, Encoding.UTF8);
+        }
+        if (first)
+        {
+            {
+                GeneratorContext generator = new GeneratorContext(metadata, config.CommandsNamespace);
+
+                var code = await _templateService.GeneratedCode("BaseCommandHandler.tt", generator);
+
+                await File.WriteAllTextAsync(Path.Combine(config.SolutionPath, config.AllCreatedPaths![^3], $"{metadata.Name}BaseCommandHandler.cs"), code, Encoding.UTF8);
+            }
+            {
+                var newMetadata = metadata.Clone();
+
+                newMetadata.Namespaces.Add(_appConfig.Value.ContractsNamespace + $".{newMetadata.Name}s.Commands.Create");
+                newMetadata.Namespaces.Add($"Domain.{newMetadata.Name}s");
+
+                GeneratorContext generator = new GeneratorContext(newMetadata, $"{config.CommandsNamespace}.Create");
+
+                var code = await _templateService.GeneratedCode("CreateCommandHandler.tt", generator);
+
+                await File.WriteAllTextAsync(Path.Combine(config.SolutionPath, config.AllCreatedPaths![^2], $"Create{newMetadata.Name}CommandHandler.cs"), code, Encoding.UTF8);
+            }
+            {
+                var newMetadata = metadata.Clone();
+
+                newMetadata.Namespaces.Add(_appConfig.Value.ContractsNamespace + $".{newMetadata.Name}s.Commands.Update");
+                newMetadata.Namespaces.Add($"Domain.{newMetadata.Name}s");
+
+                GeneratorContext generator = new GeneratorContext(newMetadata, $"{config.CommandsNamespace}.Update");
+
+                var code = await _templateService.GeneratedCode("UpdateCommandHandler.tt", generator);
+
+                await File.WriteAllTextAsync(Path.Combine(config.SolutionPath, config.AllCreatedPaths![^1], $"Update{newMetadata.Name}CommandHandler.cs"), code, Encoding.UTF8);
+            }
         }
     }
 

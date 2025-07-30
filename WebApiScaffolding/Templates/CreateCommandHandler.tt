@@ -1,0 +1,86 @@
+<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ output extension=".cs" #>
+<#@ import namespace="System" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="WebApiScaffolding.Models.Templates" #>
+<#@ parameter name="context" type="System.String" #>
+<#
+    GeneratorContext ctx = new GeneratorContext(context);
+    string classNameLowLetter = FirstLetterToLower(ctx.ClassName);
+#>
+using MediatR;
+using SharedKernel.Contracts;
+using SharedKernel.Exceptions;
+<#PrintUsages(ctx);#>
+
+namespace <#=ctx.Namespace#>;
+
+public sealed class Create<#=ctx.ClassName#>CommandHandler : <#=ctx.ClassName#>BaseCommandHandler, IRequestHandler<Create<#=ctx.ClassName#>Command, EntityCreatedResponse>
+{
+    private readonly I<#=ctx.ClassName#>Repository _<#=classNameLowLetter#>Repository;
+
+    public Create<#=ctx.ClassName#>CommandHandler(I<#=ctx.ClassName#>Repository <#=classNameLowLetter#>Repository) : base()
+    {
+        _<#=classNameLowLetter#>Repository = <#=classNameLowLetter#>Repository;
+    }
+
+    public async Task<EntityCreatedResponse> Handle(Create<#=ctx.ClassName#>Command request, CancellationToken cancellationToken)
+    {
+        var <#=classNameLowLetter#> = <#=ctx.ClassName#>.Create(
+<#PrintProperties(ctx);#>
+        );
+
+<#PrintAdds(ctx);#>
+
+        _<#=classNameLowLetter#>Repository.Add(<#=classNameLowLetter#>);
+
+        return new EntityCreatedResponse(<#=classNameLowLetter#>.Id.Value);
+    }
+}
+<#+
+    public void PrintUsages(GeneratorContext ctx)
+    {
+        if (ctx.MetaData.Namespaces == null)
+        {
+            return;
+        }
+
+        foreach (var n in ctx.MetaData.Namespaces)
+        {
+#>
+using <#= n #>;
+<#+
+        }
+    }
+
+    public void PrintProperties(GeneratorContext ctx)
+    {
+        foreach (var prop in ctx.MetaData.Properties)
+        {
+            if (!prop.IsCollection)
+            {
+#>
+                request.<#= prop.Name #>,
+<#+
+            }
+        }
+    }
+
+    public void PrintAdds(GeneratorContext ctx)
+    {
+        foreach (var prop in ctx.MetaData.Properties)
+        {
+            if (prop.IsCollection)
+            {
+#>
+        <#= FirstLetterToLower(ctx.ClassName) #>.Add<#=prop.Name#>(request);
+<#+
+            }
+        }
+    }
+
+    public static  string FirstLetterToLower(string str)
+    {
+        return char.ToLower(str[0]) + str.Substring(1);
+    }
+#>
