@@ -45,30 +45,47 @@ public class GenerateCodeService : IGenerateCodeService
         }
     }
 
+    public async Task GenerateCodeForCommandHandlers(ClassMeta metadata, GenerateCodeServiceConfig config)
+    {
+        if (string.IsNullOrEmpty(config.MainPath))
+        {
+            CreateDirectoriesFoCommandHandlers(metadata, config, _appConfig.Value);
+        }
+        {
+            var code = await GenerateCode(metadata, "BaseCommandHandler.tt", config.CommandsNamespace);
+            await File.WriteAllTextAsync(Path.Combine(config.SolutionPath, config.AllCreatedPaths![^3], $"{metadata.Name}BaseCommandHandler.cs"), code, Encoding.UTF8);
+        }
+        {
+            var newMetadata = metadata.Clone();
+            newMetadata.Namespaces.Add(_appConfig.Value.ContractsNamespace + $".{newMetadata.Name}s.Commands.Create");
+            newMetadata.Namespaces.Add($"{_appConfig.Value.DomainNamespace}.{newMetadata.Name}s");
+            var code = await GenerateCode(newMetadata, "CreateCommandHandler.tt", $"{config.CommandsNamespace}.Create");
+            await File.WriteAllTextAsync(Path.Combine(config.SolutionPath, config.AllCreatedPaths![^2], $"Create{newMetadata.Name}CommandHandler.cs"), code, Encoding.UTF8);
+        }
+        {
+            var newMetadata = metadata.Clone();
+            newMetadata.Namespaces.Add(_appConfig.Value.ContractsNamespace + $".{newMetadata.Name}s.Commands.Update");
+            newMetadata.Namespaces.Add($"{_appConfig.Value.DomainNamespace}.{newMetadata.Name}s");
+            var code = await GenerateCode(newMetadata, "UpdateCommandHandler.tt", $"{config.CommandsNamespace}.Update");
+            await File.WriteAllTextAsync(Path.Combine(config.SolutionPath, config.AllCreatedPaths![^1], $"Update{newMetadata.Name}CommandHandler.cs"), code, Encoding.UTF8);
+        }
+        {
+            var newMetadata = metadata.Clone();
+            newMetadata.NameSpace = $"Application.Queries.{config.RootClassName}s";
+            newMetadata.Namespaces.Add($"{_appConfig.Value.DomainNamespace}.{metadata.Name}s");
+            newMetadata.Namespaces.Add(_appConfig.Value.ContractsNamespace + $".{newMetadata.Name}s.Queries");
+            newMetadata.Namespaces.Add(_appConfig.Value.ContractsNamespace + $".{newMetadata.Name}s.Queries.Responses");
+
+            var code = await GenerateCode(newMetadata, "GetCommandHandler.tt", newMetadata.NameSpace);
+            await File.WriteAllTextAsync(Path.Combine(config.SolutionPath, config.AllCreatedPaths![1], $"Get{newMetadata.Name}Query.cs"), code, Encoding.UTF8);
+        }
+    }
+
     public async Task GenerateCodeForBaseCommand(ClassMeta metadata, GenerateCodeServiceConfig config)
     {
         if (string.IsNullOrEmpty(config.MainPath))
         {
             CreateDirectoriesForContracts(metadata, config, _appConfig.Value);
-
-            {
-                var code = await GenerateCode(metadata, "BaseCommandHandler.tt", config.CommandsNamespace);
-                await File.WriteAllTextAsync(Path.Combine(config.SolutionPath, config.AllCreatedPaths![^3], $"{metadata.Name}BaseCommandHandler.cs"), code, Encoding.UTF8);
-            }
-            {
-                var newMetadata = metadata.Clone();
-                newMetadata.Namespaces.Add(_appConfig.Value.ContractsNamespace + $".{newMetadata.Name}s.Commands.Create");
-                newMetadata.Namespaces.Add($"Domain.{newMetadata.Name}s");
-                var code = await GenerateCode(newMetadata, "CreateCommandHandler.tt", $"{config.CommandsNamespace}.Create");
-                await File.WriteAllTextAsync(Path.Combine(config.SolutionPath, config.AllCreatedPaths![^2], $"Create{newMetadata.Name}CommandHandler.cs"), code, Encoding.UTF8);
-            }
-            {
-                var newMetadata = metadata.Clone();
-                newMetadata.Namespaces.Add(_appConfig.Value.ContractsNamespace + $".{newMetadata.Name}s.Commands.Update");
-                newMetadata.Namespaces.Add($"Domain.{newMetadata.Name}s");
-                var code = await GenerateCode(newMetadata, "UpdateCommandHandler.tt", $"{config.CommandsNamespace}.Update");
-                await File.WriteAllTextAsync(Path.Combine(config.SolutionPath, config.AllCreatedPaths![^1], $"Update{newMetadata.Name}CommandHandler.cs"), code, Encoding.UTF8);
-            }
         }
         {
             var code = await GenerateCode(metadata, "BaseCommandTemplate.tt", config.CommandsNamespace);
@@ -77,7 +94,7 @@ public class GenerateCodeService : IGenerateCodeService
         {
             var newMetadata = metadata.Clone();
             newMetadata.Namespaces.Add(config.Namespace);
-            newMetadata.Namespaces.Add($"Domain.{config.RootClassName}s");
+            newMetadata.Namespaces.Add($"{_appConfig.Value.DomainNamespace}.{config.RootClassName}s");
             var code = await GenerateCode(newMetadata, "BaseCommandValidatorTemplate.tt", config.CommandsNamespace);
             await File.WriteAllTextAsync(Path.Combine(config.SolutionPath, config.AllCreatedPaths![^3], $"{newMetadata.Name}BaseCommandValidator.cs"), code, Encoding.UTF8);
         }
@@ -168,6 +185,25 @@ public class GenerateCodeService : IGenerateCodeService
         }
 
         return string.Empty;
+    }
+
+    private void CreateDirectoriesFoCommandHandlers(ClassMeta metadata, GenerateCodeServiceConfig config, AppConfig appConfig)
+    {
+        var commandsPath = appConfig.CommandsPath;
+        var queriesPath = appConfig.QueriesPath;
+        List<string> paths = [
+            queriesPath,
+            $"{queriesPath}\\{metadata.Name}s",
+            commandsPath,
+            $"{commandsPath}\\{metadata.Name}s",
+            $"{commandsPath}\\{metadata.Name}s\\Create",
+            $"{commandsPath}\\{metadata.Name}s\\Update"
+        ];
+
+        CreateDirectorySafely(config.SolutionPath, paths);
+
+        config.AllCreatedPaths = paths;
+        config.MainPath = paths[^1];
     }
 
     private void CreateDirectoriesFoGetContracts(ClassMeta metadata, GenerateCodeServiceConfig config, AppConfig appConfig)

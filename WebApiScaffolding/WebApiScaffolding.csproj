@@ -74,5 +74,8 @@
       <None Update="Templates\RepositoryInterfaceTemplate.tt">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
+      <None Update="Templates\GetCommandHandler.tt">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 </Project>

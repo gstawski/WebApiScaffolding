@@ -13,16 +13,16 @@ using SharedKernel.Exceptions;
 
 namespace <#=ctx.Namespace#>;
 
-public sealed class Update<#=ctx.ClassName#>CommandHandler : <#=ctx.ClassName#>BaseCommandHandler, IRequestHandler<Update<#=ctx.ClassName#>Command, Unit>
+public sealed class Get<#=ctx.ClassName#>CommandHandler : IRequestHandler<Get<#=ctx.ClassName#>Query, Get<#=ctx.ClassName#>Response>
 {
     private readonly I<#=ctx.ClassName#>Repository _<#=classNameLowLetter#>Repository;
 
-    public Update<#=ctx.ClassName#>CommandHandler(I<#=ctx.ClassName#>Repository <#=classNameLowLetter#>Repository) : base()
+    public Get<#=ctx.ClassName#>CommandHandler(I<#=ctx.ClassName#>Repository <#=classNameLowLetter#>Repository)
     {
         _<#=classNameLowLetter#>Repository = <#=classNameLowLetter#>Repository;
     }
 
-    public async Task<Unit> Handle(Update<#=ctx.ClassName#>Command request, CancellationToken cancellationToken)
+    public async Task<Get<#=ctx.ClassName#>Response> Handle(Get<#=ctx.ClassName#>Query request, CancellationToken cancellationToken)
     {
         var <#=classNameLowLetter#> = await _<#=classNameLowLetter#>Repository.FindAsync(new <#=ctx.ClassName#>Id(request.Id<#=ctx.ClassName#>));
 
@@ -31,13 +31,10 @@ public sealed class Update<#=ctx.ClassName#>CommandHandler : <#=ctx.ClassName#>B
             throw new EntityNotFoundException(typeof(<#=ctx.ClassName#>), request.Id<#=ctx.ClassName#>);
         }
 
-        <#=classNameLowLetter#>.Update(
+        return new Get<#=ctx.ClassName#>Response
+        {
 <#PrintProperties(ctx);#>
-        );
-
-<#PrintUpdates(ctx);#>
-
-        return Unit.Value;
+        };
     }
 }
 <#+
@@ -63,20 +60,7 @@ using <#= n #>;
             if (!prop.IsCollection)
             {
 #>
-                request.<#= prop.Name #>,
-<#+
-            }
-        }
-    }
-
-    public void PrintUpdates(GeneratorContext ctx)
-    {
-        foreach (var prop in ctx.MetaData.Properties)
-        {
-            if (prop.IsCollection)
-            {
-#>
-        <#= FirstLetterToLower(ctx.ClassName) #>.Update<#=prop.Name#>(<#= FirstLetterToLower(ctx.ClassName) #>, request);
+            <#= prop.Name #> = <#=FirstLetterToLower(ctx.ClassName)#>.<#= prop.Name #>,
 <#+
             }
         }

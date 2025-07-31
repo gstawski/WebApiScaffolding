@@ -246,6 +246,13 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
         }
     }
 
+    private async Task GenerateCommands(WorkspaceSymbol symbol, GenerateCodeServiceConfig config)
+    {
+        var builder = new ClassMetaBuilderForBaseCommand(_allProjectSymbols, _appConfig.Value);
+        var classMeta = builder.BuildClassMeta(symbol);
+        await _generateCodeService.GenerateCodeForCommandHandlers(classMeta, config);
+    }
+
     public AnalyzeSolutionService(
         ILogger<AnalyzeSolutionService> logger,
         IOptions<AppConfig> appConfig,
@@ -281,13 +288,14 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
         if (symbol != null)
         {
             _logger.LogInformation($"Found class: {symbol.Name} in namespace {symbol.Namespace}");
+
             {
                 var config = new GenerateCodeServiceConfig(
                     solutionDirectory,
                     $"{_appConfig.Value.InfrastructureNamespace}.{symbol.Name}s",
                     $"{_appConfig.Value.CommandsNamespace}.{symbol.Name}s",
                     symbol.Name
-                    );
+                );
                 await GenerateConfiguration(solution, symbol, config, new Dictionary<string, int>());
             }
             {
@@ -305,6 +313,14 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
                     $"{_appConfig.Value.CommandsNamespace}.{symbol.Name}s",
                     symbol.Name);
                 await GenerateGetContracts(symbol, config, new Dictionary<string, int>());
+            }
+            {
+                var config = new GenerateCodeServiceConfig(
+                    solutionDirectory,
+                    string.Empty,
+                    $"{_appConfig.Value.CommandsNamespace}.{symbol.Name}s",
+                    symbol.Name);
+                await GenerateCommands(symbol, config);
             }
         }
         else
