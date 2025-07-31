@@ -1,33 +1,20 @@
 <#@ template debug="false" hostspecific="false" language="C#" #>
 <#@ output extension=".cs" #>
-<#@ import namespace="System" #>
-<#@ import namespace="System.Text" #>
 <#@ import namespace="WebApiScaffolding.Models.Templates" #>
 <#@ parameter name="context" type="System.String" #>
 <#
     GeneratorContext ctx = new GeneratorContext(context);
 #>
-<#
-if (ctx.Order == 0)
-{
-#>
-using MediatR;
-using SharedKernel.Abstractions.CQRS.Commands;
-<#
-}
-#>
-using System.ComponentModel.DataAnnotations;
 <#PrintUsages(ctx);#>
 
 namespace <#=ctx.Namespace#>;
 
-public sealed class Update<#=ctx.ClassName#>Command : <#=ctx.ClassName#>BaseCommand<#= (ctx.Order == 0 ? ", ICommand<Unit>" : string.Empty) #>
+public class Get<#=ctx.ClassName#>Response : <#=ctx.ClassName#>BaseCommand
 {
-    [Required]
-    public int Id<#=ctx.ClassName#> { get; set; }
 <#PrintProperties(ctx);#>
 }
 <#+
+
     public void PrintUsages(GeneratorContext ctx)
     {
         if (ctx.MetaData.Namespaces == null)
@@ -47,16 +34,22 @@ using <#= n #>;
     {
         foreach (var prop in ctx.MetaData.Properties)
         {
-            if (prop.IsCollection)
+            if (prop.IsSimpleType)
             {
 #>
-    public List<<#= TypeName(prop) #>> <#= prop.Name #> { get; set; } = new();
+    public <#= prop.Type #> <#= prop.Name #> { get; init; }
+<#+
+            }
+            else if (prop.IsCollection)
+            {
+#>
+    public List<Get<#= TypeName(prop) #>Response> <#= prop.Name #> { get; init; } = new();
 <#+
             }
             else
             {
 #>
-    public <#= TypeName(prop) #> <#= prop.Name #> { get; set; } = new();
+    public Get<#= TypeName(prop) #>Response <#= prop.Name #> { get; init; }
 <#+
             }
         }
@@ -67,9 +60,8 @@ using <#= n #>;
         string typeName = prop.Type;
         if (typeName.EndsWith("?"))
         {
-            typeName = typeName.TrimEnd('?');
-            return $"Update{typeName}Command?";
+            return typeName.TrimEnd('?');
         }
-        return $"Update{typeName}Command";
+        return typeName;
     }
 #>

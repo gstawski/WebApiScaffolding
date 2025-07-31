@@ -1,0 +1,14 @@
+<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ output extension=".cs" #>
+<#@ import namespace="WebApiScaffolding.Models.Templates" #>
+<#@ parameter name="context" type="System.String" #>
+<#
+    GeneratorContext ctx = new GeneratorContext(context);
+#>
+using SharedKernel.Abstractions.Domain;
+
+namespace Domain.<#=ctx.ClassName#>s;
+
+public interface I<#=ctx.ClassName#>Repository : IBaseRepository<<#=ctx.ClassName#>, <#=ctx.ClassName#>Id>
+{
+}

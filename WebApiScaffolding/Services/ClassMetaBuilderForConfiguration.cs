@@ -1,5 +1,4 @@
-﻿using Microsoft.CodeAnalysis;
-using WebApiScaffolding.Interfaces;
+﻿using WebApiScaffolding.Interfaces;
 using WebApiScaffolding.Models.Configuration;
 using WebApiScaffolding.Models.Templates;
 using WebApiScaffolding.Models.WorkspaceModel;
@@ -10,29 +9,6 @@ namespace WebApiScaffolding.Services;
 public class ClassMetaBuilderForConfiguration : ClassMetaBuilderBase, IClassMetaBuilder
 {
     private readonly WorkspaceSolution _solution;
-    private static string GetBaseType(ISymbol symbol)
-    {
-        if (symbol.Kind == SymbolKind.NamedType)
-        {
-            var namedTypeSymbol = (INamedTypeSymbol)symbol;
-            if (namedTypeSymbol.BaseType == null)
-            {
-                return string.Empty;
-            }
-
-            var baseType = namedTypeSymbol.BaseType;
-
-            if (baseType.IsGenericType)
-            {
-                foreach (var type in baseType.TypeArguments)
-                {
-                    return type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
-                }
-            }
-        }
-
-        return string.Empty;
-    }
 
     private (string propNameForClass, string propNameForId) GetConstraints(string className, string masterClassName, string masterIdType)
     {
@@ -109,7 +85,6 @@ public class ClassMetaBuilderForConfiguration : ClassMetaBuilderBase, IClassMeta
                                     Type = prop.Type,
                                     IsSimpleType = false,
                                     Order = prop.Order,
-                                    IsSetPublic = prop.IsSetPublic,
                                     IsCollection = prop.IsCollection,
                                     IsValueObject = true,
                                     WithOne = className,
@@ -125,7 +100,6 @@ public class ClassMetaBuilderForConfiguration : ClassMetaBuilderBase, IClassMeta
                                 Type = prop.Type,
                                 IsSimpleType = false,
                                 Order = prop.Order,
-                                IsSetPublic = prop.IsSetPublic,
                                 IsCollection = prop.IsCollection,
                                 IsValueObject = false,
                                 WithOne = prop.Name,
@@ -155,7 +129,6 @@ public class ClassMetaBuilderForConfiguration : ClassMetaBuilderBase, IClassMeta
                             Type = prop.Type,
                             IsSimpleType = false,
                             Order = prop.Order,
-                            IsSetPublic = prop.IsSetPublic,
                             IsCollection = prop.IsCollection,
                             IsValueObject = false,
                             WithOne = findPropForClass,

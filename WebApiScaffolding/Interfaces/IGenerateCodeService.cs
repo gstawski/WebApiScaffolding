@@ -9,4 +9,5 @@ public interface IGenerateCodeService
     Task GenerateCodeForBaseCommand(ClassMeta metadata, GenerateCodeServiceConfig config);
     Task GenerateCodeForCreateCommand(ClassMeta metadata, GenerateCodeServiceConfig config);
     Task GenerateCodeForUpdateCommand(ClassMeta metadata, GenerateCodeServiceConfig config);
+    Task GenerateCodeForGetCommand(ClassMeta metadata, GenerateCodeServiceConfig config);
 }

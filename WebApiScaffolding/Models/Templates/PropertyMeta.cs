@@ -16,9 +16,6 @@ public class PropertyMeta
     [JsonPropertyName("o")]
     public int Order { get; set; }
 
-    [JsonPropertyName("p")]
-    public bool IsSetPublic { get; set; }
-
     [JsonPropertyName("c")]
     public bool IsCollection { get; set; }
 
@@ -39,7 +36,6 @@ public class PropertyMeta
             Type = Type,
             IsSimpleType = IsSimpleType,
             Order = Order,
-            IsSetPublic = IsSetPublic,
             IsCollection = IsCollection,
             IsValueObject = IsValueObject,
             WithOne = WithOne,

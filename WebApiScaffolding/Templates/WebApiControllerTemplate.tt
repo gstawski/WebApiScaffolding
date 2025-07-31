@@ -1,0 +1,56 @@
+<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ output extension=".cs" #>
+<#@ import namespace="WebApiScaffolding.Models.Templates" #>
+<#@ parameter name="context" type="System.String" #>
+<#
+    GeneratorContext ctx = new GeneratorContext(context);
+#>
+using Application.Contracts.<#=ctx.ClassName#>s.Commands.Create;
+using Application.Contracts.<#=ctx.ClassName#>s.Commands.Update;
+using Application.Contracts.<#=ctx.ClassName#>s.Queries;
+using Application.Contracts.<#=ctx.ClassName#>s.Queries.Responses;
+using MediatR;
+using Microsoft.AspNetCore.Mvc;
+using SharedKernel.ApiConventions;
+using SharedKernel.Contracts;
+using SharedKernel.ListQuerying;
+
+namespace WebApi.Controllers;
+
+public sealed class <#=ctx.ClassName#>Controller(IMediator mediator) : BaseController(mediator)
+{
+    [HttpGet("{id:int}")]
+    [ApiConventionMethod(typeof(CustomApiConventions), nameof(CustomApiConventions.GetById))]
+    public async Task<ActionResult<Get<#=ctx.ClassName#>Response>> Get<#=ctx.ClassName#>(int id, CancellationToken token)
+    {
+        var result = await _mediator.Send(new Get<#=ctx.ClassName#>Query { Id<#=ctx.ClassName#> = id }, token);
+        return Ok(result);
+    }
+
+    [HttpPost]
+    [ApiConventionMethod(typeof(CustomApiConventions), nameof(CustomApiConventions.Create))]
+    public async Task<ActionResult<EntityCreatedResponse>> Create<#=ctx.ClassName#>(
+        [FromBody] Create<#=ctx.ClassName#>Command request,
+        CancellationToken token)
+    {
+        var result = await _mediator.Send(request, token);
+
+        return CreatedAtAction(
+            nameof(Create<#=ctx.ClassName#>),
+            new { id = result.Id },
+            result);
+    }
+
+    [HttpPut("{id:int}")]
+    [ApiConventionMethod(typeof(CustomApiConventions), nameof(CustomApiConventions.Update))]
+    public async Task<IActionResult> Update<#=ctx.ClassName#>(
+        int id,
+        [FromBody] Update<#=ctx.ClassName#>Command request,
+        CancellationToken token)
+    {
+        request.Id<#=ctx.ClassName#> = id;
+
+        await _mediator.Send(request, token);
+        return NoContent();
+    }
+}

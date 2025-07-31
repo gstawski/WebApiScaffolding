@@ -1,0 +1,21 @@
+<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ output extension=".cs" #>
+<#@ import namespace="WebApiScaffolding.Models.Templates" #>
+<#@ parameter name="context" type="System.String" #>
+<#
+    GeneratorContext ctx = new GeneratorContext(context);
+#>
+using Domain.<#=ctx.ClassName#>s;
+using Infrastructure.Common.Repositories;
+using Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+
+namespace Infrastructure.<#=ctx.ClassName#>s;
+
+public sealed class <#=ctx.ClassName#>Repository(ApplicationDbContext dbContext) : BaseRepository<<#=ctx.ClassName#>, <#=ctx.ClassName#>Id>(dbContext), I<#=ctx.ClassName#>Repository
+{
+    public Task SaveChangesAsync(CancellationToken cancellationToken)
+    {
+        return _dbContext.SaveChangesAsync(cancellationToken);
+    }
+}

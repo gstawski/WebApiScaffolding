@@ -77,17 +77,6 @@ public class SyntaxPropertyMeta
         _propertyDeclaration = node;
         _typeSymbol = model.GetTypeInfo(node.Type).Type;
 
-        if (node.AccessorList != null && node.AccessorList.Accessors.Count > 0)
-        {
-            foreach (var accessor in node.AccessorList.Accessors)
-            {
-                if (accessor.IsKind(SyntaxKind.SetAccessorDeclaration) && IsPublic(accessor))
-                {
-                    IsSetPublic = true;
-                }
-            }
-        }
-
         IsSimpleType = node.Type is PredefinedTypeSyntax ||
                            (node.Type is NullableTypeSyntax nullableType && nullableType.ElementType is PredefinedTypeSyntax);
         if (!IsSimpleType)
@@ -108,8 +97,6 @@ public class SyntaxPropertyMeta
     public bool IsSimpleType { get; set; }
 
     public int Order { get; }
-
-    public bool IsSetPublic { get; }
 
     public bool IsCollection { get; set; }
 
@@ -143,7 +130,6 @@ public class SyntaxPropertyMeta
             Type = Type,
             IsSimpleType = IsSimpleType,
             Order = Order,
-            IsSetPublic = IsSetPublic,
             IsCollection = IsCollection
         };
     }

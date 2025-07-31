@@ -62,9 +62,9 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
 
     private static List<WorkspaceSymbol> GetChildSymbolsToGenerate(
         WorkspaceSymbol symbol,
-        AppConfig appConfig,
         Dictionary<string, int> uniqueCheck,
-        Dictionary<string, WorkspaceSymbol> allProjectSymbols)
+        Dictionary<string, WorkspaceSymbol> allProjectSymbols,
+        Func<WorkspaceSymbol, bool> checkIfShouldAdd)
     {
         var symbols = new List<WorkspaceSymbol>();
 
@@ -73,9 +73,6 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
 
         if (publicPropertiesCollector.Properties.Count > 0)
         {
-            var dictionaryBaseClass = appConfig.DictionaryBaseClass;
-            var entityBaseClass = appConfig.EntityBaseClass;
-
             foreach (var prop in publicPropertiesCollector.Properties)
             {
                 if (uniqueCheck.ContainsKey(prop.FullName))
@@ -90,8 +87,7 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
                         var psymbol = FindSymbolByName(allProjectSymbols, prop.Type, null);
                         if (psymbol != null)
                         {
-                            if (!SyntaxHelpers.IsClassInheritingFrom(psymbol, dictionaryBaseClass)
-                                && SyntaxHelpers.IsClassInheritingFrom(psymbol, entityBaseClass))
+                            if (checkIfShouldAdd(psymbol))
                             {
                                 symbols.Add(psymbol);
                             }
@@ -105,8 +101,7 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
                             var psymbol = FindSymbolByName(allProjectSymbols, className, null);
                             if (psymbol != null)
                             {
-                                if (!SyntaxHelpers.IsClassInheritingFrom(psymbol, dictionaryBaseClass)
-                                    && SyntaxHelpers.IsClassInheritingFrom(psymbol, entityBaseClass))
+                                if (checkIfShouldAdd(psymbol))
                                 {
                                     symbols.Add(psymbol);
                                 }
@@ -120,6 +115,34 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
         return symbols;
     }
 
+    private bool OnlyEntities(WorkspaceSymbol symbol)
+    {
+        var dictionaryBaseClass = _appConfig.Value.DictionaryBaseClass;
+        var entityBaseClass = _appConfig.Value.EntityBaseClass;
+
+        if (!SyntaxHelpers.IsClassInheritingFrom(symbol, dictionaryBaseClass)
+            && SyntaxHelpers.IsClassInheritingFrom(symbol, entityBaseClass))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool EntitiesAndDictionaries(WorkspaceSymbol symbol)
+    {
+        var dictionaryBaseClass = _appConfig.Value.DictionaryBaseClass;
+        var entityBaseClass = _appConfig.Value.EntityBaseClass;
+
+        if (SyntaxHelpers.IsClassInheritingFrom(symbol, entityBaseClass)
+            || SyntaxHelpers.IsClassInheritingFrom(symbol, dictionaryBaseClass))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
     private async Task GenerateConfiguration(WorkspaceSolution solution, WorkspaceSymbol symbol, GenerateCodeServiceConfig config, Dictionary<string, int> uniqueCheck)
     {
         var builder = new ClassMetaBuilderForConfiguration(_allProjectSymbols, solution, _appConfig.Value);
@@ -128,7 +151,7 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
 
         uniqueCheck.TryAdd(symbol.FullName, 0);
 
-        var childSymbols = GetChildSymbolsToGenerate(symbol, _appConfig.Value, uniqueCheck, _allProjectSymbols);
+        var childSymbols = GetChildSymbolsToGenerate(symbol, uniqueCheck, _allProjectSymbols, OnlyEntities);
 
         foreach (var psymbol in childSymbols)
         {
@@ -144,7 +167,7 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
 
         uniqueCheck.TryAdd(symbol.FullName, 0);
 
-        var childSymbols = GetChildSymbolsToGenerate(symbol, _appConfig.Value, uniqueCheck, _allProjectSymbols);
+        var childSymbols = GetChildSymbolsToGenerate(symbol, uniqueCheck, _allProjectSymbols, OnlyEntities);
 
         foreach (var psymbol in childSymbols)
         {
@@ -163,7 +186,7 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
 
         uniqueCheck.TryAdd(symbol.FullName, 0);
 
-        var childSymbols = GetChildSymbolsToGenerate(symbol, _appConfig.Value, uniqueCheck, _allProjectSymbols);
+        var childSymbols = GetChildSymbolsToGenerate(symbol, uniqueCheck, _allProjectSymbols, OnlyEntities);
 
         foreach (var psymbol in childSymbols)
         {
@@ -182,7 +205,7 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
 
         uniqueCheck.TryAdd(symbol.FullName, 0);
 
-        var childSymbols = GetChildSymbolsToGenerate(symbol, _appConfig.Value, uniqueCheck, _allProjectSymbols);
+        var childSymbols = GetChildSymbolsToGenerate(symbol, uniqueCheck, _allProjectSymbols, OnlyEntities);
 
         foreach (var psymbol in childSymbols)
         {
@@ -195,6 +218,32 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
         await GenerateBaseContracts(symbol, config, new Dictionary<string, int>());
         await GenerateCreateContracts(symbol, config, new Dictionary<string, int>());
         await GenerateUpdateContracts(symbol, config, new Dictionary<string, int>());
+    }
+
+    private async Task GenerateGetContracts(WorkspaceSymbol symbol, GenerateCodeServiceConfig config, Dictionary<string, int> uniqueCheck)
+    {
+        if (uniqueCheck.Count == 0)
+        {
+            config.AdditionalNamespaces.Add(config.CommandsNamespace);
+            config.AdditionalNamespaces.Add($"Application.Contracts.{symbol.Name}s");
+            config.AdditionalNamespaces.Add($"Application.Contracts.{symbol.Name}s.Commands");
+        }
+
+        var builder = new ClassMetaBuilderForGetCommand(_allProjectSymbols, _appConfig.Value, uniqueCheck);
+        var classMeta = builder.BuildClassMeta(symbol);
+
+        classMeta.Order = uniqueCheck.Count;
+
+        await _generateCodeService.GenerateCodeForGetCommand(classMeta, config);
+
+        uniqueCheck.TryAdd(symbol.FullName, 0);
+
+        var childSymbols = GetChildSymbolsToGenerate(symbol, uniqueCheck, _allProjectSymbols, EntitiesAndDictionaries);
+
+        foreach (var psymbol in childSymbols)
+        {
+            await GenerateGetContracts(psymbol, config, uniqueCheck);
+        }
     }
 
     public AnalyzeSolutionService(
@@ -236,15 +285,26 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
                 var config = new GenerateCodeServiceConfig(
                     solutionDirectory,
                     $"{_appConfig.Value.InfrastructureNamespace}.{symbol.Name}s",
-                    $"{_appConfig.Value.CommandsNamespace}.{symbol.Name}s" );
+                    $"{_appConfig.Value.CommandsNamespace}.{symbol.Name}s",
+                    symbol.Name
+                    );
                 await GenerateConfiguration(solution, symbol, config, new Dictionary<string, int>());
             }
             {
                 var config = new GenerateCodeServiceConfig(
                     solutionDirectory,
                     $"{_appConfig.Value.ContractsNamespace}.{symbol.Name}s.Commands",
-                    $"{_appConfig.Value.CommandsNamespace}.{symbol.Name}s");
+                    $"{_appConfig.Value.CommandsNamespace}.{symbol.Name}s",
+                    symbol.Name);
                 await GenerateContracts(symbol, config);
+            }
+            {
+                var config = new GenerateCodeServiceConfig(
+                    solutionDirectory,
+                    $"{_appConfig.Value.ContractsNamespace}.{symbol.Name}s.Queries.Responses",
+                    $"{_appConfig.Value.CommandsNamespace}.{symbol.Name}s",
+                    symbol.Name);
+                await GenerateGetContracts(symbol, config, new Dictionary<string, int>());
             }
         }
         else

@@ -6,13 +6,13 @@ using WebApiScaffolding.SyntaxWalkers;
 
 namespace WebApiScaffolding.Services;
 
-public class ClassMetaBuilderForUpdateCommand : ClassMetaBuilderBase, IClassMetaBuilder
+public class ClassMetaBuilderForGetCommand : ClassMetaBuilderBase, IClassMetaBuilder
 {
-    private readonly Dictionary<string, int> _uniqueTypeCheck;
+    private readonly Dictionary<string, int> _uniqueCheck;
 
-    public ClassMetaBuilderForUpdateCommand(Dictionary<string, WorkspaceSymbol> symbols, AppConfig conf, Dictionary<string, int> uniqueCheck) : base(symbols, conf)
+    public ClassMetaBuilderForGetCommand(Dictionary<string, WorkspaceSymbol> symbols, AppConfig config, Dictionary<string, int> uniqueCheck) : base(symbols, config)
     {
-        _uniqueTypeCheck = uniqueCheck;
+        _uniqueCheck = uniqueCheck;
     }
 
     public ClassMeta BuildClassMeta(WorkspaceSymbol symbol)
@@ -22,12 +22,30 @@ public class ClassMetaBuilderForUpdateCommand : ClassMetaBuilderBase, IClassMeta
             throw new ArgumentException("Declaration syntax for class is null", nameof(symbol));
         }
 
+        if (SyntaxHelpers.IsClassInheritingFrom(symbol, Config.DictionaryBaseClass))
+        {
+            return  new ClassMeta
+            {
+                Name = symbol.Name,
+                NameSpace = symbol.Namespace
+            };
+        }
+
         FindPublicPropertiesCollector publicPropertiesCollector = new FindPublicPropertiesCollector(symbol.Model);
         publicPropertiesCollector.Visit(symbol.DeclarationSyntaxForClass);
 
         var properties = new List<PropertyMeta>();
         if (publicPropertiesCollector.Properties.Count > 0)
         {
+            properties.Add(new PropertyMeta
+            {
+                Name = "Id",
+                Type = "int",
+                Order = 1,
+                IsSimpleType = true,
+                IsValueObject  = false
+            });
+
             foreach (var prop in publicPropertiesCollector.Properties)
             {
                 if (prop.IsSimpleType)
@@ -35,7 +53,7 @@ public class ClassMetaBuilderForUpdateCommand : ClassMetaBuilderBase, IClassMeta
                     continue;
                 }
 
-                if (_uniqueTypeCheck.ContainsKey(prop.FullName))
+                if (_uniqueCheck.ContainsKey(prop.FullName))
                 {
                     continue;
                 }
@@ -45,10 +63,10 @@ public class ClassMetaBuilderForUpdateCommand : ClassMetaBuilderBase, IClassMeta
                     var psymbol = FindSymbolByName(prop.Type, null);
                     if (psymbol != null)
                     {
-                        if (SyntaxHelpers.IsClassInheritingFrom(psymbol, Config.DictionaryBaseClass))
+                        /*if (SyntaxHelpers.IsClassInheritingFrom(psymbol, Config.DictionaryBaseClass))
                         {
                             continue;
-                        }
+                        }*/
 
                         if (SyntaxHelpers.IsClassInheritingFrom(psymbol, Config.ValueObjectClass))
                         {

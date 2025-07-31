@@ -1,0 +1,16 @@
+<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ output extension=".cs" #>
+<#@ import namespace="WebApiScaffolding.Models.Templates" #>
+<#@ parameter name="context" type="System.String" #>
+<#
+    GeneratorContext ctx = new GeneratorContext(context);
+#>
+using Application.Contracts.<#=ctx.ClassName#>s.Queries.Responses;
+using SharedKernel.Abstractions.CQRS.Commands;
+
+namespace Application.Contracts.<#=ctx.ClassName#>s.Queries;
+
+public class Get<#=ctx.ClassName#>Query : ICommand<Get<#=ctx.ClassName#>Response>
+{
+    public int Id<#=ctx.ClassName#> { get; set; }
+}

@@ -49,7 +49,7 @@ using <#= n #>;
         RuleFor(x => x.<#= prop.Name #>)
             .NotEmpty()
             .WithErrorCode(ValidationErrorCode.NotEmpty)
-            .MaximumLength(<#=ctx.ClassName#>.<#= prop.Name #>Maxength)
+            .MaximumLength(<#=ctx.ClassName#>.<#= prop.Name #>MaxLength)
             .WithErrorCode(ValidationErrorCode.MaxLengthExceeded);
 <#+
             }
@@ -57,7 +57,7 @@ using <#= n #>;
             {
 #>
         RuleFor(x => x.<#= prop.Name #>)
-            .MaximumLength(<#=ctx.ClassName#>.<#= prop.Name #>Maxength)
+            .MaximumLength(<#=ctx.ClassName#>.<#= prop.Name #>MaxLength)
             .WithErrorCode(ValidationErrorCode.MaxLengthExceeded);
 <#+
             }

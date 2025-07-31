@@ -9,6 +9,8 @@ public class AppConfig
     public string InfrastructurePath { get; set; }
     public string ContractsPath { get; set; }
     public string CommandsPath { get; set; }
+    public string DomainPath { get; set; }
+    public string WebApiPath { get; set; }
     public string ValueObjectClass { get; set; }
     public string DictionaryBaseClass { get; set; }
     public string EntityBaseClass { get; set; }
