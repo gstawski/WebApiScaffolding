@@ -77,7 +77,7 @@ public class GenerateCodeService : IGenerateCodeService
             newMetadata.Namespaces.Add(_appConfig.Value.ContractsNamespace + $".{newMetadata.Name}s.Queries.Responses");
 
             var code = await GenerateCode(newMetadata, "GetCommandHandler.tt", newMetadata.NameSpace);
-            await File.WriteAllTextAsync(Path.Combine(config.SolutionPath, config.AllCreatedPaths![1], $"Get{newMetadata.Name}Query.cs"), code, Encoding.UTF8);
+            await File.WriteAllTextAsync(Path.Combine(config.SolutionPath, config.AllCreatedPaths![1], $"Get{newMetadata.Name}CommandHandler.cs"), code, Encoding.UTF8);
         }
     }
 
