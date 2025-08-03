@@ -6,10 +6,10 @@ namespace WebApiScaffolding.SyntaxWalkers;
 
 internal static class SyntaxHelpers
 {
-    private static readonly SymbolDisplayFormat GenericTypeFormat = new(
+    private static readonly SymbolDisplayFormat NonGenericTypeFormat = new(
         globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Omitted,
         typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
-        genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters);
+        genericsOptions: SymbolDisplayGenericsOptions.None);
 
     private static bool IsInheritingFrom(ITypeSymbol? symbol, string baseTypeName)
     {
@@ -28,7 +28,7 @@ internal static class SyntaxHelpers
 
             if (symbol is INamedTypeSymbol namedTypeSymbol && namedTypeSymbol.IsGenericType)
             {
-                var fullNameGeneric = namedTypeSymbol.ToDisplayString(GenericTypeFormat);
+                var fullNameGeneric = namedTypeSymbol.ToDisplayString(NonGenericTypeFormat);
                 if (fullNameGeneric.EndsWith(dotBaseTypeName) || fullNameGeneric == baseTypeName)
                 {
                     return true;
@@ -50,7 +50,7 @@ internal static class SyntaxHelpers
 
             if (baseTypeSymbol.IsGenericType)
             {
-                var fullName = baseTypeSymbol.ToDisplayString(GenericTypeFormat);
+                var fullName = baseTypeSymbol.ToDisplayString(NonGenericTypeFormat);
                 if (fullName.EndsWith(dotBaseTypeName) || fullName == baseTypeName)
                 {
                     return true;

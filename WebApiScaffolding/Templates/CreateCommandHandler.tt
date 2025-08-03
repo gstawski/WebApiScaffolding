@@ -22,7 +22,7 @@ public sealed class Create<#=ctx.ClassName#>CommandHandler : <#=ctx.ClassName#>B
         _<#=classNameLowLetter#>Repository = <#=classNameLowLetter#>Repository;
     }
 
-    public async Task<EntityCreatedResponse> Handle(Create<#=ctx.ClassName#>Command request, CancellationToken cancellationToken)
+    public Task<EntityCreatedResponse> Handle(Create<#=ctx.ClassName#>Command request, CancellationToken cancellationToken)
     {
         var <#=classNameLowLetter#> = <#=ctx.ClassName#>.Create(
 <#PrintProperties(ctx);#>
@@ -32,7 +32,7 @@ public sealed class Create<#=ctx.ClassName#>CommandHandler : <#=ctx.ClassName#>B
 
         _<#=classNameLowLetter#>Repository.Add(<#=classNameLowLetter#>);
 
-        return new EntityCreatedResponse(<#=classNameLowLetter#>.Id.Value);
+        return Task.FromResult(new EntityCreatedResponse(<#=classNameLowLetter#>.Id.Value));
     }
 }
 <#+
@@ -58,7 +58,7 @@ using <#= n #>;
             if (!prop.IsCollection)
             {
 #>
-                request.<#= prop.Name #>,
+                request.<#= prop.Name #><#= PrintComma(ctx, prop) #>
 <#+
             }
         }
@@ -77,8 +77,22 @@ using <#= n #>;
         }
     }
 
-    public static  string FirstLetterToLower(string str)
+    public static string FirstLetterToLower(string str)
     {
         return char.ToLower(str[0]) + str.Substring(1);
+    }
+
+    public static string PrintComma(GeneratorContext ctx, PropertyMeta prop)
+    {
+        for (int i = 0; i < ctx.MetaData.Properties.Count; i++)
+        {
+            var p = ctx.MetaData.Properties[i];
+            if (p.Name == prop.Name && i < ctx.MetaData.Properties.Count - 1)
+            {
+                return ",";
+            }
+
+        }
+        return string.Empty;
     }
 #>

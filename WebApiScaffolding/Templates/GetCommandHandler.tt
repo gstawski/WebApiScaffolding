@@ -33,6 +33,7 @@ public sealed class Get<#=ctx.ClassName#>CommandHandler : IRequestHandler<Get<#=
 
         return new Get<#=ctx.ClassName#>Response
         {
+            Id = <#=FirstLetterToLower(ctx.ClassName)#>.Id.Value,
 <#PrintProperties(ctx);#>
         };
     }
@@ -66,7 +67,7 @@ using <#= n #>;
         }
     }
 
-    public static  string FirstLetterToLower(string str)
+    public static string FirstLetterToLower(string str)
     {
         return char.ToLower(str[0]) + str.Substring(1);
     }
