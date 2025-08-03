@@ -42,14 +42,37 @@ public class ClassMetaBuilderForConfiguration : ClassMetaBuilderBase, IClassMeta
 
     }
 
+    private static string FindPropertyTypeInClass(WorkspaceSymbol? classSymbol, string propertyTypeToFind)
+    {
+        if (classSymbol == null)
+        {
+            return string.Empty;
+        }
+
+        var publicPropertiesCollector = new FindPublicPropertiesCollector(classSymbol.Model);
+        publicPropertiesCollector.Visit(classSymbol.DeclarationSyntaxForClass);
+
+        foreach (var prop in publicPropertiesCollector.Properties)
+        {
+            if (prop.IsCollection)
+            {
+                var classTypeName = prop.UnderlyingGenericTypeName;
+                if (classTypeName == propertyTypeToFind)
+                {
+                    return prop.Name;
+                }
+            }
+        }
+
+        return string.Empty;
+    }
+
     public ClassMeta BuildClassMeta(WorkspaceSymbol symbol)
     {
         if (symbol.DeclarationSyntaxForClass == null)
         {
             throw new ArgumentException("Declaration syntax for class is null", nameof(symbol));
         }
-
-        var idType = GetBaseType(symbol.Symbol);
 
         var publicPropertiesCollector = new FindPublicPropertiesCollector(symbol.Model);
         publicPropertiesCollector.Visit(symbol.DeclarationSyntaxForClass);
@@ -72,12 +95,13 @@ public class ClassMetaBuilderForConfiguration : ClassMetaBuilderBase, IClassMeta
                     {
                         namespaces.TryAdd(psymbol.Namespace, 0);
 
-                        if (SyntaxHelpers.IsClassInheritingFrom(psymbol, Config.ValueObjectClass))
+                        if (SyntaxHelpers.IsClassInheritingFrom(psymbol, Config.BaseIdClass))
                         {
                             var findResult = _solution.FindClassesInheritingFrom(psymbol.Symbol, Config.DomainNamespace).ConfigureAwait(false).GetAwaiter().GetResult();
                             if (findResult.Count > 0)
                             {
                                 var className = findResult.FirstOrDefault()?.ClassName ?? string.Empty;
+                                var constraintPropertyName = FindPropertyTypeInClass(FindSymbolByName(className), symbol.FullName);
 
                                 properties.Add(new PropertyMeta
                                 {
@@ -85,10 +109,11 @@ public class ClassMetaBuilderForConfiguration : ClassMetaBuilderBase, IClassMeta
                                     Type = prop.Type,
                                     IsSimpleType = false,
                                     Order = prop.Order,
-                                    IsCollection = prop.IsCollection,
+                                    IsCollection = false,
                                     IsValueObject = true,
                                     WithOne = className,
-                                    ForeignKey = string.Empty
+                                    ForeignKey = prop.Name,
+                                    WithMany = constraintPropertyName
                                 });
                             }
                         }
@@ -100,10 +125,11 @@ public class ClassMetaBuilderForConfiguration : ClassMetaBuilderBase, IClassMeta
                                 Type = prop.Type,
                                 IsSimpleType = false,
                                 Order = prop.Order,
-                                IsCollection = prop.IsCollection,
+                                IsCollection = false,
                                 IsValueObject = false,
                                 WithOne = prop.Name,
-                                ForeignKey = $"IdDict{prop.Type.TrimEnd('?')}"
+                                ForeignKey = $"IdDict{prop.Type.TrimEnd('?')}",
+                                WithMany = string.Empty
                             });
                         }
                         else
@@ -112,7 +138,7 @@ public class ClassMetaBuilderForConfiguration : ClassMetaBuilderBase, IClassMeta
                         }
                     }
                 }
-                else
+                else if (prop.IsCollection)
                 {
                     var className = prop.UnderlyingGenericTypeName;
                     if (!string.IsNullOrEmpty(className))
@@ -121,8 +147,6 @@ public class ClassMetaBuilderForConfiguration : ClassMetaBuilderBase, IClassMeta
 
                         namespaces.TryAdd(sp.Namespace, 0);
 
-                        var (findPropForClass, findPropForId) = GetConstraints(sp.ClassName, symbol.Name, idType);
-
                         properties.Add(new PropertyMeta
                         {
                             Name = prop.Name,
@@ -130,9 +154,8 @@ public class ClassMetaBuilderForConfiguration : ClassMetaBuilderBase, IClassMeta
                             IsSimpleType = false,
                             Order = prop.Order,
                             IsCollection = prop.IsCollection,
-                            IsValueObject = false,
-                            WithOne = findPropForClass,
-                            ForeignKey = findPropForId
+                            IsValueObject = true,
+                            WithOne = sp.ClassName,
                         });
                     }
                 }

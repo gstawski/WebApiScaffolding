@@ -28,6 +28,9 @@ public class PropertyMeta
     [JsonPropertyName("f")]
     public string ForeignKey { get; set; }
 
+    [JsonPropertyName("m")]
+    public string WithMany { get; set; }
+
     public PropertyMeta Clone()
     {
         return new PropertyMeta

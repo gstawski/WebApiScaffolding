@@ -63,12 +63,7 @@ public class ClassMetaBuilderForGetCommand : ClassMetaBuilderBase, IClassMetaBui
                     var psymbol = FindSymbolByName(prop.Type, null);
                     if (psymbol != null)
                     {
-                        /*if (SyntaxHelpers.IsClassInheritingFrom(psymbol, Config.DictionaryBaseClass))
-                        {
-                            continue;
-                        }*/
-
-                        if (SyntaxHelpers.IsClassInheritingFrom(psymbol, Config.ValueObjectClass))
+                        if (SyntaxHelpers.IsClassInheritingFrom(psymbol, Config.BaseIdClass))
                         {
                             continue;
                         }
@@ -88,10 +83,10 @@ public class ClassMetaBuilderForGetCommand : ClassMetaBuilderBase, IClassMetaBui
                 }
                 else if (prop.IsCollection)
                 {
-                    var className = prop.UnderlyingGenericTypeName;
-                    if (!string.IsNullOrEmpty(className))
+                    var classTypeName = prop.UnderlyingGenericTypeName;
+                    if (!string.IsNullOrEmpty(classTypeName))
                     {
-                        var sp = SyntaxHelpers.SplitFullName(className);
+                        var sp = SyntaxHelpers.SplitFullName(classTypeName);
 
                         properties.Add(new PropertyMeta
                         {

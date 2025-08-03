@@ -12,7 +12,7 @@ public class AppConfig
     public string DomainPath { get; set; }
     public string WebApiPath { get; set; }
     public string QueriesPath { get; set; }
-    public string ValueObjectClass { get; set; }
+    public string BaseIdClass { get; set; }
     public string DictionaryBaseClass { get; set; }
     public string EntityBaseClass { get; set; }
 }

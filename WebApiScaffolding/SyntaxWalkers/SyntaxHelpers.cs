@@ -6,6 +6,11 @@ namespace WebApiScaffolding.SyntaxWalkers;
 
 internal static class SyntaxHelpers
 {
+    private static readonly SymbolDisplayFormat GenericTypeFormat = new(
+        globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Omitted,
+        typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+        genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters);
+
     private static bool IsInheritingFrom(ITypeSymbol? symbol, string baseTypeName)
     {
         if (symbol == null)
@@ -13,23 +18,43 @@ internal static class SyntaxHelpers
             return false;
         }
 
-        var fullName = symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var dotBaseTypeName = $".{baseTypeName}";
-
-        if (fullName.EndsWith(dotBaseTypeName) || fullName == baseTypeName)
         {
-            return true;
+            var fullName = symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            if (fullName.EndsWith(dotBaseTypeName) || fullName == baseTypeName)
+            {
+                return true;
+            }
+
+            if (symbol is INamedTypeSymbol namedTypeSymbol && namedTypeSymbol.IsGenericType)
+            {
+                var fullNameGeneric = namedTypeSymbol.ToDisplayString(GenericTypeFormat);
+                if (fullNameGeneric.EndsWith(dotBaseTypeName) || fullNameGeneric == baseTypeName)
+                {
+                    return true;
+                }
+            }
         }
 
         var baseTypeSymbol = symbol.BaseType;
 
         while (baseTypeSymbol != null)
         {
-            fullName = baseTypeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
-            if (fullName.EndsWith(dotBaseTypeName) || fullName == baseTypeName)
             {
-                return true;
+                var fullName = baseTypeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                if (fullName.EndsWith(dotBaseTypeName) || fullName == baseTypeName)
+                {
+                    return true;
+                }
+            }
+
+            if (baseTypeSymbol.IsGenericType)
+            {
+                var fullName = baseTypeSymbol.ToDisplayString(GenericTypeFormat);
+                if (fullName.EndsWith(dotBaseTypeName) || fullName == baseTypeName)
+                {
+                    return true;
+                }
             }
 
             baseTypeSymbol = baseTypeSymbol.BaseType;
@@ -37,8 +62,7 @@ internal static class SyntaxHelpers
 
         foreach (var interfaceSymbol in symbol.Interfaces)
         {
-            fullName = interfaceSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
+            var fullName = interfaceSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             if (fullName.EndsWith(dotBaseTypeName) || fullName == baseTypeName)
             {
                 return true;

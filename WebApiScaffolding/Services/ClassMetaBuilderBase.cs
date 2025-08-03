@@ -152,6 +152,11 @@ public class ClassMetaBuilderBase
 
     protected WorkspaceSymbol? FindSymbolByName(string className)
     {
+        if (string.IsNullOrEmpty(className))
+        {
+            return null;
+        }
+
         return FindSymbolByName(className, null);
     }
 

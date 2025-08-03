@@ -50,7 +50,7 @@ public class ClassMetaBuilderForUpdateCommand : ClassMetaBuilderBase, IClassMeta
                             continue;
                         }
 
-                        if (SyntaxHelpers.IsClassInheritingFrom(psymbol, Config.ValueObjectClass))
+                        if (SyntaxHelpers.IsClassInheritingFrom(psymbol, Config.BaseIdClass))
                         {
                             continue;
                         }

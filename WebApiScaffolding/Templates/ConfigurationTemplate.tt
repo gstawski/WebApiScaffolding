@@ -50,34 +50,35 @@ using <#= n #>;
         builder.Property(x => x.<#= prop.Name #>).HasColumnName("<#= ToSnakeCase(prop.Name) #>")<#=SpecialAttributes(prop, ctx.ClassName)#><#= IsRequired(prop) #>;
 <#+
             }
-            else if (prop.IsValueObject)
+            else if (!prop.IsCollection && !string.IsNullOrEmpty(prop.WithMany))
             {
 #>
+
         builder.Property(x => x.<#= prop.Name #>).HasColumnName("<#= ToSnakeCase(prop.Name) #>")<#=SpecialAttributes(prop, ctx.ClassName)#><#= IsRequired(prop) #>;
 
         builder.HasOne<<#= prop.WithOne #>>()
-            .WithMany()
-            .HasForeignKey(x => x.<#= prop.Name #>);
-<#+
-            }
-            else if (prop.IsCollection)
-            {
-#>
-        builder.HasMany(x => x.<#= prop.Name #>)
-            .WithOne(x => x.<#= prop.WithOne #>)
+            .WithMany(x => x.<#= prop.WithMany #>)
             .HasForeignKey(x => x.<#= prop.ForeignKey #>)
             .OnDelete(DeleteBehavior.Cascade);
+<#+
+            }
+            else if (!prop.IsCollection && !string.IsNullOrEmpty(prop.WithOne))
+            {
+#>
+
+        builder.HasOne(x => x.<#= prop.Name #>)
+            .WithMany()
+            .HasForeignKey(x => x.<#= prop.ForeignKey #>)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.Navigation(x => x.<#= prop.Name #>)
             .AutoInclude();
 <#+
             }
-            else
+            else if (prop.IsCollection && !string.IsNullOrEmpty(prop.WithOne))
             {
 #>
-        builder.HasOne(x => x.<#= prop.Name #>)
-            .WithMany()
-            .HasForeignKey(a => a.<#= prop.ForeignKey #>)
-            .OnDelete(DeleteBehavior.Restrict);
+
         builder.Navigation(x => x.<#= prop.Name #>)
             .AutoInclude();
 <#+

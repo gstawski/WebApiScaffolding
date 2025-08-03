@@ -70,7 +70,7 @@ public class ClassMetaBuilderForBaseCommand : ClassMetaBuilderBase, IClassMetaBu
                             continue;
                         }
 
-                        if (SyntaxHelpers.IsClassInheritingFrom(psymbol, Config.ValueObjectClass))
+                        if (SyntaxHelpers.IsClassInheritingFrom(psymbol, Config.BaseIdClass))
                         {
                             properties.Add(GetPropertyForValueObject(psymbol, prop, FindSymbolByName));
                         }
