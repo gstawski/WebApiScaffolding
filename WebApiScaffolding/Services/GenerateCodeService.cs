@@ -169,13 +169,12 @@ public class GenerateCodeService : IGenerateCodeService
         }
     }
 
-
     private async Task<string> GenerateCode(ClassMeta metadata, string templateName, string nameSpace)
     {
         try
         {
             _logger.LogInfo($"Generating {templateName} code for {metadata.Name}");
-            //_logger.LogInformation("Generating {TemplateName} code for {ClassName}", templateName, metadata.Name);
+
             GeneratorContext generator = new GeneratorContext(metadata, nameSpace);
 
             var code = await _templateService.GeneratedCode(templateName, generator);

@@ -43,7 +43,7 @@ public class SyntaxConstructorMeta
         SemanticModel semanticModel,
         string propertyName)
     {
-        var baseTypeSymbol = ModelExtensions.GetTypeInfo(semanticModel, baseTypeSyntax.Type).Type;
+        var baseTypeSymbol = semanticModel.GetTypeInfo(baseTypeSyntax.Type).Type;
         if (baseTypeSymbol == null)
         {
             return null;

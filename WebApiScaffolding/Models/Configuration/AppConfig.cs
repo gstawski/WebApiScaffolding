@@ -2,17 +2,17 @@
 
 public class AppConfig
 {
-    public string DomainNamespace { get; init; }
-    public string InfrastructureNamespace { get; init; }
-    public string CommandsNamespace { get; init; }
-    public string ContractsNamespace { get; init; }
-    public string InfrastructurePath { get; init; }
-    public string ContractsPath { get; init; }
-    public string CommandsPath { get; init; }
-    public string DomainPath { get; init; }
-    public string WebApiPath { get; init; }
-    public string QueriesPath { get; init; }
-    public string BaseIdClass { get; init; }
-    public string DictionaryBaseClass { get; init; }
-    public string EntityBaseClass { get; init; }
+    public required string DomainNamespace { get; init; }
+    public required string InfrastructureNamespace { get; init; }
+    public required string CommandsNamespace { get; init; }
+    public required string ContractsNamespace { get; init; }
+    public required string InfrastructurePath { get; init; }
+    public required string ContractsPath { get; init; }
+    public required string CommandsPath { get; init; }
+    public required string DomainPath { get; init; }
+    public required string WebApiPath { get; init; }
+    public required string QueriesPath { get; init; }
+    public required string BaseIdClass { get; init; }
+    public required string DictionaryBaseClass { get; init; }
+    public required string EntityBaseClass { get; init; }
 }

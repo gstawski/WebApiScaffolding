@@ -9,12 +9,6 @@ public class WorkspaceProject
     private readonly Project _project;
     private readonly Compilation _compilation;
 
-    public string ProjectName => Path.GetFileName(_project.FilePath) ?? string.Empty;
-
-    public string ProjectPath => Path.GetDirectoryName(_project.FilePath) ?? string.Empty;
-
-    public string DefaultNamespace => _project.DefaultNamespace ?? string.Empty;
-
     public async Task<List<WorkspaceSymbol>> AllProjectSymbols()
     {
         List<WorkspaceSymbol> ls = new List<WorkspaceSymbol>();

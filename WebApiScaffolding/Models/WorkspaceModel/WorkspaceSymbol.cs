@@ -5,8 +5,8 @@ namespace WebApiScaffolding.Models.WorkspaceModel;
 
 public class WorkspaceSymbol
 {
-    public SemanticModel Model { get; init; }
-    public INamedTypeSymbol Symbol { get; init; }
+    public required SemanticModel Model { get; init; }
+    public required INamedTypeSymbol Symbol { get; init; }
     public ClassDeclarationSyntax? DeclarationSyntaxForClass { get; init; }
     public EnumDeclarationSyntax? DeclarationSyntaxForEnum { get; init; }
 
