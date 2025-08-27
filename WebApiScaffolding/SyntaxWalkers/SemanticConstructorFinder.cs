@@ -49,6 +49,11 @@ public class SemanticConstructorFinder
                     var paramSymbol = constructor.Parameters[i];
                     var paramSyntax = parameters[i];
 
+                    if (paramSyntax.Type == null)
+                    {
+                        continue;
+                    }
+
                     var paramTypeSymbol = _semanticModel.GetTypeInfo(paramSyntax.Type).Type;
                     if (paramTypeSymbol == null || !paramTypeSymbol.Equals(paramSymbol.Type, SymbolEqualityComparer.Default))
                     {

@@ -31,7 +31,7 @@ public class GeneratorContext
     public GeneratorContext(string objContext)
     {
         var gc = JsonSerializer.Deserialize<GeneratorContext>(objContext, JsonOptions);
-        Namespace = gc.Namespace;
+        Namespace = gc!.Namespace;
         MetaData = gc.MetaData;
     }
 

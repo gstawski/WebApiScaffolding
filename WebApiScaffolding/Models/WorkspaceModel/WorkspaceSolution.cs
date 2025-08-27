@@ -17,7 +17,7 @@ public class WorkspaceSolution : WorkspaceBase
             var namedTypeSymbol = (INamedTypeSymbol)symbol;
             return namedTypeSymbol.ContainingNamespace
                 .ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat)
-                .StartsWith(domainNamespace, StringComparison.OrdinalIgnoreCase);
+                .StartsWith(domainNamespace, StringComparison.Ordinal);
         }
 
         return false;
@@ -76,7 +76,11 @@ public class WorkspaceSolution : WorkspaceBase
     {
         foreach (var p in _solution.Projects)
         {
-            _openProjects[p.Name] = await WorkspaceProject.LoadFromSolution(p, _logAction);
+            var project = await WorkspaceProject.LoadFromSolution(p, _logAction);
+            if (project != null)
+            {
+                _openProjects[p.Name] = project;
+            }
         }
 
         Dictionary<string, WorkspaceSymbol> allSymbols = new Dictionary<string, WorkspaceSymbol>();
@@ -104,7 +108,7 @@ public class WorkspaceSolution : WorkspaceBase
 
         foreach (var p in _solution.Projects)
         {
-            if (p.Name.StartsWith(domainNamespace, StringComparison.OrdinalIgnoreCase))
+            if (p.Name.StartsWith(domainNamespace, StringComparison.Ordinal))
             {
                 foreach (var document in p.Documents)
                 {
@@ -155,7 +159,7 @@ public class WorkspaceSolution : WorkspaceBase
 
         foreach (var p in _solution.Projects)
         {
-            if (p.Name.StartsWith(domainNamespace, StringComparison.OrdinalIgnoreCase))
+            if (p.Name.StartsWith(domainNamespace, StringComparison.Ordinal))
             {
                 foreach (var document in p.Documents)
                 {

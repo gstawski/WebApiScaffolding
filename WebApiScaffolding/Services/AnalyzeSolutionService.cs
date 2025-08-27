@@ -35,7 +35,7 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
 
             foreach (var symbol in allProjectSymbols.Values)
             {
-                if (symbol.Name == className && symbol.Namespace.StartsWith(domainNamespace))
+                if (symbol.Name == className && symbol.Namespace.StartsWith(domainNamespace, StringComparison.Ordinal))
                 {
                     return symbol;
                 }
@@ -279,7 +279,7 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
             throw new ArgumentException("Solution path not exists.");
         }
 
-        var solution = await WorkspaceSolution.Load(_commandLineArgs.SolutionPath, s => _logger.LogInformation(s));
+        var solution = await WorkspaceSolution.Load(_commandLineArgs.SolutionPath, s => _logger.LogInfo(s));
 
         _allProjectSymbols = await solution.AllProjectSymbols();
 
@@ -287,7 +287,7 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
 
         if (symbol != null)
         {
-            _logger.LogInformation($"Found class: {symbol.Name} in namespace {symbol.Namespace}");
+            _logger.LogInfo($"Found class: {symbol.Name} in namespace {symbol.Namespace}");
 
             {
                 var config = new GenerateCodeServiceConfig(
@@ -325,7 +325,7 @@ public class AnalyzeSolutionService : IAnalyzeSolutionService
         }
         else
         {
-            _logger.LogWarning($"Class {_commandLineArgs.ClassName} not found in namespace {_appConfig.Value.DomainNamespace}.");
+            _logger.LogWarn($"Class {_commandLineArgs.ClassName} not found in namespace {_appConfig.Value.DomainNamespace}.");
         }
     }
 }

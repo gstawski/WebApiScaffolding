@@ -21,7 +21,7 @@ internal static class SyntaxHelpers
         var dotBaseTypeName = $".{baseTypeName}";
         {
             var fullName = symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            if (fullName.EndsWith(dotBaseTypeName) || fullName == baseTypeName)
+            if (fullName.EndsWith(dotBaseTypeName, StringComparison.Ordinal) || fullName == baseTypeName)
             {
                 return true;
             }
@@ -29,7 +29,7 @@ internal static class SyntaxHelpers
             if (symbol is INamedTypeSymbol namedTypeSymbol && namedTypeSymbol.IsGenericType)
             {
                 var fullNameGeneric = namedTypeSymbol.ToDisplayString(NonGenericTypeFormat);
-                if (fullNameGeneric.EndsWith(dotBaseTypeName) || fullNameGeneric == baseTypeName)
+                if (fullNameGeneric.EndsWith(dotBaseTypeName, StringComparison.Ordinal) || fullNameGeneric == baseTypeName)
                 {
                     return true;
                 }
@@ -42,7 +42,7 @@ internal static class SyntaxHelpers
         {
             {
                 var fullName = baseTypeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                if (fullName.EndsWith(dotBaseTypeName) || fullName == baseTypeName)
+                if (fullName.EndsWith(dotBaseTypeName, StringComparison.Ordinal) || fullName == baseTypeName)
                 {
                     return true;
                 }
@@ -51,7 +51,7 @@ internal static class SyntaxHelpers
             if (baseTypeSymbol.IsGenericType)
             {
                 var fullName = baseTypeSymbol.ToDisplayString(NonGenericTypeFormat);
-                if (fullName.EndsWith(dotBaseTypeName) || fullName == baseTypeName)
+                if (fullName.EndsWith(dotBaseTypeName, StringComparison.Ordinal) || fullName == baseTypeName)
                 {
                     return true;
                 }
@@ -63,7 +63,7 @@ internal static class SyntaxHelpers
         foreach (var interfaceSymbol in symbol.Interfaces)
         {
             var fullName = interfaceSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            if (fullName.EndsWith(dotBaseTypeName) || fullName == baseTypeName)
+            if (fullName.EndsWith(dotBaseTypeName, StringComparison.Ordinal) || fullName == baseTypeName)
             {
                 return true;
             }

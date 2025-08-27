@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using WebApiScaffolding.Interfaces;
+using WebApiScaffolding.Services;
 
 namespace WebApiScaffolding;
 
@@ -24,7 +25,7 @@ public class AppWorker : BackgroundService
     {
         try
         {
-            _logger.LogInformation("AppWorker is starting.");
+            _logger.LogInfo("AppWorker is starting.");
             await _analyzeSolutionService.AnalyzeSolution();
         }
         catch (Exception e)

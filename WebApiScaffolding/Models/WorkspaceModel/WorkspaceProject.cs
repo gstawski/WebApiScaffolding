@@ -9,11 +9,11 @@ public class WorkspaceProject
     private readonly Project _project;
     private readonly Compilation _compilation;
 
-    public string ProjectName => Path.GetFileName(_project.FilePath);
+    public string ProjectName => Path.GetFileName(_project.FilePath) ?? string.Empty;
 
-    public string ProjectPath => Path.GetDirectoryName(_project.FilePath);
+    public string ProjectPath => Path.GetDirectoryName(_project.FilePath) ?? string.Empty;
 
-    public string DefaultNamespace => _project.DefaultNamespace;
+    public string DefaultNamespace => _project.DefaultNamespace ?? string.Empty;
 
     public async Task<List<WorkspaceSymbol>> AllProjectSymbols()
     {
@@ -67,21 +67,18 @@ public class WorkspaceProject
         return ls;
     }
 
-    public static async Task<WorkspaceProject> LoadFromSolution(Project project, Action<string> logAction)
+    public static async Task<WorkspaceProject?> LoadFromSolution(Project project, Action<string> logAction)
     {
-        return project != null
-            ? await LoadProject(logAction, _ => Task.FromResult(project))
-            : null;
-    }
-
-    private static async Task<WorkspaceProject> LoadProject(Action<string> logAction, Func<WorkspaceProgressBarProjectLoadStatus, Task<Project>> getProject)
-    {
-        var project = await getProject(new WorkspaceProgressBarProjectLoadStatus(logAction));
         var compilation = await project.GetCompilationAsync();
+
+        if (compilation == null)
+        {
+            return null;
+        }
 
         compilation = compilation.AddReferences(MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
 
-        var output = Path.Combine(Path.GetDirectoryName(project.FilePath), "bin");
+        var output = Path.Combine(Path.GetDirectoryName(project.FilePath) ?? string.Empty, "bin");
 
         if (Directory.Exists(output))
         {

@@ -2,14 +2,14 @@
 
 public class GenerateCodeServiceConfig
 {
-    public string SolutionPath { get; init; }
-    public string Namespace { get; init; }
+    public string SolutionPath { get; }
+    public string Namespace { get; }
 
-    public List<string> AdditionalNamespaces { get; init; } = new();
+    public List<string> AdditionalNamespaces { get; } = new();
 
-    public string CommandsNamespace { get; init; }
+    public string CommandsNamespace { get; }
 
-    public string RootClassName { get; init; }
+    public string RootClassName { get; }
 
     public string? MainPath { get; set; }
 

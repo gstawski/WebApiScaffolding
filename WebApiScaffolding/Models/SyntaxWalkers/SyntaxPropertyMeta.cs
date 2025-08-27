@@ -41,29 +41,29 @@ public class SyntaxPropertyMeta
                         (i.IsGenericType || i.Name == "IEnumerable"));
 
         return enumerableInterfaces.Any() ||
-               typeSymbol.Name.EndsWith("Collection") ||
-               typeSymbol.Name.EndsWith("List");
+               typeSymbol.Name.EndsWith("Collection", StringComparison.Ordinal) ||
+               typeSymbol.Name.EndsWith("List", StringComparison.Ordinal);
     }
 
     private static bool SystemTypeSimpleTypeCheck(string typeName)
     {
-        if (typeName.EndsWith("Guid") || typeName.EndsWith("Guid?"))
+        if (typeName.EndsWith("Guid", StringComparison.Ordinal) || typeName.EndsWith("Guid?", StringComparison.Ordinal))
         {
             return true;
         }
-        if (typeName.EndsWith("DateOnly") || typeName.EndsWith("DateOnly?"))
+        if (typeName.EndsWith("DateOnly", StringComparison.Ordinal) || typeName.EndsWith("DateOnly?", StringComparison.Ordinal))
         {
             return true;
         }
-        if (typeName.EndsWith("DateTime") || typeName.EndsWith("DateTime?"))
+        if (typeName.EndsWith("DateTime", StringComparison.Ordinal) || typeName.EndsWith("DateTime?", StringComparison.Ordinal))
         {
             return true;
         }
-        if (typeName.EndsWith("DateTimeOffset") || typeName.EndsWith("DateTimeOffset?"))
+        if (typeName.EndsWith("DateTimeOffset", StringComparison.Ordinal) || typeName.EndsWith("DateTimeOffset?", StringComparison.Ordinal))
         {
             return true;
         }
-        if (typeName.EndsWith("TimeSpan") || typeName.EndsWith("TimeSpan?"))
+        if (typeName.EndsWith("TimeSpan", StringComparison.Ordinal) || typeName.EndsWith("TimeSpan?", StringComparison.Ordinal))
         {
             return true;
         }
@@ -94,11 +94,11 @@ public class SyntaxPropertyMeta
 
     public string Type => _propertyDeclaration.Type.ToString();
 
-    public bool IsSimpleType { get; set; }
+    public bool IsSimpleType { get; }
 
     public int Order { get; }
 
-    public bool IsCollection { get; set; }
+    public bool IsCollection { get; }
 
     public string FullName => _typeSymbol?.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat) ?? string.Empty;
 

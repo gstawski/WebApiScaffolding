@@ -20,7 +20,7 @@ public class ClassMetaBuilderForBaseCommand : ClassMetaBuilderBase, IClassMetaBu
         if (string.IsNullOrEmpty(typeName))
         {
             isSimple = propertyMeta.IsSimpleType;
-            if (propertyMeta.Type.EndsWith("?"))
+            if (propertyMeta.Type.EndsWith('?'))
             {
                 typeName = propertyMeta.Type.Trim('?') + "Dto?";
             }

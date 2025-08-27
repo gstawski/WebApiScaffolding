@@ -124,7 +124,7 @@ public class ClassMetaBuilderBase
         publicPropertiesCollector.Visit(symbol.DeclarationSyntaxForClass);
         if (publicPropertiesCollector.Properties.Count == 1)
         {
-            var nullAble = propertyMeta.Type.EndsWith("?") ? "?" : string.Empty;
+            var nullAble = propertyMeta.Type.EndsWith('?') ? "?" : string.Empty;
             return (publicPropertiesCollector.Properties.First().Type + nullAble, true);
         }
 
@@ -175,7 +175,7 @@ public class ClassMetaBuilderBase
 
             foreach (var symbol in _symbols.Values)
             {
-                if (symbol.Name == className && symbol.Namespace.StartsWith(domainNamespace))
+                if (symbol.Name == className && symbol.Namespace.StartsWith(domainNamespace, StringComparison.Ordinal))
                 {
                     return symbol;
                 }

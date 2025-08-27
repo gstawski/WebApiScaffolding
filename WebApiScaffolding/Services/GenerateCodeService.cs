@@ -169,11 +169,13 @@ public class GenerateCodeService : IGenerateCodeService
         }
     }
 
+
     private async Task<string> GenerateCode(ClassMeta metadata, string templateName, string nameSpace)
     {
         try
         {
-            _logger.LogInformation("Generating {TemplateName} code for {ClassName}", templateName, metadata.Name);
+            _logger.LogInfo($"Generating {templateName} code for {metadata.Name}");
+            //_logger.LogInformation("Generating {TemplateName} code for {ClassName}", templateName, metadata.Name);
             GeneratorContext generator = new GeneratorContext(metadata, nameSpace);
 
             var code = await _templateService.GeneratedCode(templateName, generator);
@@ -181,7 +183,7 @@ public class GenerateCodeService : IGenerateCodeService
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Error generating code for {ClassName} using template {TemplateName}", metadata.Name, templateName);
+            _logger.LogError(e, $"Error generating code for {metadata.Name} using template {templateName}");
         }
 
         return string.Empty;
@@ -244,7 +246,7 @@ public class GenerateCodeService : IGenerateCodeService
         CreateDirectorySafely(config.SolutionPath, paths);
 
         config.AllCreatedPaths = paths;
-        config.MainPath = paths.First(x=>x.EndsWith("Commands"));
+        config.MainPath = paths.First(x=>x.EndsWith("Commands", StringComparison.Ordinal));
     }
 
     private void CreateDirectoriesForConfiguration(ClassMeta metadata, GenerateCodeServiceConfig config, AppConfig appConfig)
@@ -278,7 +280,7 @@ public class GenerateCodeService : IGenerateCodeService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating directory {DirectoryPath}", fullPath);
+                _logger.LogError(ex, $"Error creating directory {fullPath}");
             }
         }
     }

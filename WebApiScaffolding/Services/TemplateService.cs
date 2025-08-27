@@ -1,4 +1,5 @@
 ﻿using System.CodeDom.Compiler;
+using System.Globalization;
 using System.Text;
 using Mono.TextTemplating;
 using WebApiScaffolding.Interfaces;
@@ -43,7 +44,7 @@ public class TemplateService : ITemplateService
             StringBuilder sb = new StringBuilder();
             foreach (CompilerError error in generator.Errors)
             {
-                sb.AppendLine($"{error.Line} : {error.ErrorNumber} {error.ErrorText}");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"{error.Line} : {error.ErrorNumber} {error.ErrorText}");
             }
 
             return sb.ToString();

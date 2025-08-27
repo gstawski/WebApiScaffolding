@@ -10,36 +10,12 @@ public class ClassMetaBuilderForConfiguration : ClassMetaBuilderBase, IClassMeta
 {
     private readonly WorkspaceSolution _solution;
 
-    private (string propNameForClass, string propNameForId) GetConstraints(string className, string masterClassName, string masterIdType)
-    {
-        var symbol = FindSymbolByName(className, null);
-
-        if (symbol != null)
-        {
-            var publicPropertiesCollector = new FindPublicPropertiesCollector(symbol.Model);
-            publicPropertiesCollector.Visit(symbol.DeclarationSyntaxForClass);
-
-            var propForClass = publicPropertiesCollector.Properties
-                .FirstOrDefault(p => p.Type.Equals(masterClassName, StringComparison.OrdinalIgnoreCase)
-                                     || p.Type.Trim('?').Equals(masterClassName, StringComparison.OrdinalIgnoreCase));
-
-            var propForId = publicPropertiesCollector.Properties
-                .FirstOrDefault(p => p.Type.Equals(masterIdType, StringComparison.OrdinalIgnoreCase)
-                                     || p.Type.Trim('?').Equals(masterIdType, StringComparison.OrdinalIgnoreCase));
-
-           return (propForClass?.Name ?? string.Empty, propForId?.Name ?? string.Empty);
-        }
-
-        return (string.Empty, string.Empty);
-    }
-
     public ClassMetaBuilderForConfiguration(
         Dictionary<string, WorkspaceSymbol> symbols,
         WorkspaceSolution solution,
         AppConfig conf) : base(symbols, conf)
     {
         _solution = solution;
-
     }
 
     private static string FindPropertyTypeInClass(WorkspaceSymbol? classSymbol, string propertyTypeToFind)

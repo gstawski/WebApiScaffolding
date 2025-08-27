@@ -54,11 +54,11 @@ public class SyntaxConstructorMeta
             .FirstOrDefault();
     }
 
-    private static List<IPropertySymbol> GetBaseClassPrimaryConstructor( PrimaryConstructorBaseTypeSyntax baseTypeSyntax, Func<string, WorkspaceSymbol?> findSymbolByName)
+    private static List<IPropertySymbol> GetBaseClassPrimaryConstructor(PrimaryConstructorBaseTypeSyntax baseTypeSyntax, Func<string, WorkspaceSymbol?> findSymbolByName)
     {
         var typeName = baseTypeSyntax.Type.ToString();
 
-        if (typeName.Contains("<"))
+        if (typeName.Contains('<'))
         {
             typeName = typeName.Substring(0, typeName.IndexOf("<", StringComparison.OrdinalIgnoreCase));
         }
@@ -133,9 +133,8 @@ public class SyntaxConstructorMeta
 
                 if (assignmentExpression?.Expression is AssignmentExpressionSyntax assignment)
                 {
-                    var leftHandSideSymbol = ModelExtensions.GetSymbolInfo(semanticModel, assignment.Left).Symbol as IPropertySymbol;
-
-                    if (leftHandSideSymbol != null && IsPropertySetFromParameter(assignment.Right, constructor, semanticModel))
+                    if (semanticModel.GetSymbolInfo(assignment.Left).Symbol is IPropertySymbol leftHandSideSymbol
+                        && IsPropertySetFromParameter(assignment.Right, constructor, semanticModel))
                     {
                         propertyAssignments.Add(leftHandSideSymbol);
                     }
@@ -148,7 +147,7 @@ public class SyntaxConstructorMeta
 
     private static bool IsPropertySetFromParameter(ExpressionSyntax rightHandSide, ConstructorDeclarationSyntax constructor, SemanticModel semanticModel)
     {
-        var rightHandSideSymbol = ModelExtensions.GetSymbolInfo(semanticModel, rightHandSide).Symbol;
+        var rightHandSideSymbol = semanticModel.GetSymbolInfo(rightHandSide).Symbol;
 
         if (rightHandSideSymbol is IParameterSymbol parameterSymbol)
         {

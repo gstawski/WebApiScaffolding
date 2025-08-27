@@ -8,7 +8,7 @@ using WebApiScaffolding.Services;
 
 namespace WebApiScaffolding;
 
-internal class Program
+internal sealed class Program
 {
     private static void RegisterLocator()
     {
